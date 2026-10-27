@@ -27,7 +27,7 @@ Inspiration/celebrity style, saved outfit references, gap suggestions, trip plan
 - Required account from the start. No anonymous mode.
 - **Invite-only:** email allowlist checked at signup/sign-in; non-allowlisted emails get a "invite only" message and no account.
 - **Auth:** Supabase email magic link. No passwords, no OAuth in MVP.
-- **Token-abuse protection:** allowlist + hard monthly spend limit set in the LLM provider dashboard. LLM and weather keys are server-side env vars only (`.env.local` gitignored, Vercel env settings). No per-user caps in MVP. Publishing the repo on GitHub is safe as long as no key is committed.
+- **Token-abuse protection:** allowlist + provider-side spend control (Gemini: stay on the free tier's rate limits, or set a budget alert in Google Cloud billing once on the paid tier). LLM and weather keys are server-side env vars only (`.env.local` gitignored, Vercel env settings). No per-user caps in MVP. Publishing the repo on GitHub is safe as long as no key is committed.
 
 ## 4. Onboarding (interactive prompts)
 
@@ -74,7 +74,8 @@ An outfit is a stack: base layer, optional mid layer, optional outer layer, plus
 - Output: structured object (Zod schema) listing item ids per slot, plus a short rationale (e.g. "4–15°C with rain at 3pm, so waterproof outer").
 - **No validation in MVP** (explicit decision). Known risk: hallucinated item ids or weather-inappropriate picks. Item-integrity check is first in backlog.
 - **Provider-agnostic:** use the Vercel AI SDK so tagging and generation can swap providers. Use a cheaper vision model for tagging and a stronger model for outfits (configurable by env).
-- **Default provider: Anthropic** (`@ai-sdk/anthropic`, one `ANTHROPIC_API_KEY`). Haiku-class model for tagging, Sonnet-class for outfit generation. Chosen as the easiest setup: single key, vision and structured output supported, monthly spend limit configurable in the Anthropic Console.
+- **Default provider: Google Gemini** (`@ai-sdk/google`, one `GOOGLE_GENERATIVE_AI_API_KEY` from Google AI Studio). `gemini-flash-lite-latest` for tagging, `gemini-flash-latest` for outfit generation; override with `TAGGING_MODEL` / `OUTFIT_MODEL`. The `-latest` aliases move to newer models over time; pin a specific version if outputs drift.
+- Gemini's free tier fits the MVP. On the free (unpaid) tier Google may use submitted content, including clothing photos, to improve its products; enable billing (paid tier) before inviting people beyond close friends. Set a budget alert in Google Cloud billing as the spend backstop.
 
 ## 7. Today Screen (prompt-first)
 
@@ -100,10 +101,13 @@ Logs the worn outfit (date, item ids, context, weather summary). History is stor
 - User-set time window (default 8am–8pm, editable). Uses hourly forecast over the window: min/max feels-like, rain chance, wind. The outfit must handle the swing (layers).
 
 ### 8.2 Provider
-- **WeatherAPI.com** (free tier, key required). Use the forecast endpoint with `days=1` (or 2 if the window crosses midnight), which returns hourly data including feels-like, chance of rain and wind.
+- **Open-Meteo** (no API key). Forecast endpoint with hourly `apparent_temperature`, `precipitation_probability`, `wind_speed_10m`, `weather_code`, plus `temperature_unit=fahrenheit`, `wind_speed_unit=mph`, `timezone=auto`.
+- City search via the Open-Meteo geocoding API (no key).
+- Weather codes are numeric WMO codes; map them to labels in a small lookup table.
 - Cache per location (rounded lat/lon) for ~1 hour.
 - Keep the call behind a small weather adapter so the provider can be swapped later.
-- Tomorrow.io was considered and dropped (tight free limits: 25 req/hr; hourly access on the free tier unconfirmed).
+- License: the free tier is non-commercial. Fine for MVP, personal use and portfolio; switch to Open-Meteo's paid API plan (same API + key) if Layerup is ever commercialized.
+- Considered and dropped: Tomorrow.io (25 req/hr free limit; hourly access on free tier unconfirmed) and WeatherAPI.com (needs a key; Open-Meteo is simpler).
 
 Units: °F (and mph) by default; a °C toggle is backlog.
 
@@ -148,4 +152,4 @@ Units: °F (and mph) by default; a °C toggle is backlog.
 
 - Whether item photos should be sent to the LLM at generation time (spec assumes tags only).
 - Formality is not a tag field; the LLM infers it from category/subtype. Add a `formality` tag if "Going out / event" results are weak.
-- WeatherAPI.com free-tier terms (rate limits, attribution requirement) not reviewed yet.
+- Open-Meteo attribution: the free tier asks for credit (CC BY 4.0); add a small "Weather data by Open-Meteo.com" link in the weather strip.
