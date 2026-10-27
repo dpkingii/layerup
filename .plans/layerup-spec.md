@@ -74,7 +74,7 @@ An outfit is a stack: base layer, optional mid layer, optional outer layer, plus
 - Output: structured object (Zod schema) listing item ids per slot, plus a short rationale (e.g. "4–15°C with rain at 3pm, so waterproof outer").
 - **No validation in MVP** (explicit decision). Known risk: hallucinated item ids or weather-inappropriate picks. Item-integrity check is first in backlog.
 - **Provider-agnostic:** use the Vercel AI SDK so tagging and generation can swap providers. Use a cheaper vision model for tagging and a stronger model for outfits (configurable by env).
-- **Default provider: Google Gemini** (`@ai-sdk/google`, one `GOOGLE_GENERATIVE_AI_API_KEY` from Google AI Studio). `gemini-flash-lite-latest` for tagging, `gemini-flash-latest` for outfit generation; override with `TAGGING_MODEL` / `OUTFIT_MODEL`. The `-latest` aliases move to newer models over time; pin a specific version if outputs drift.
+- **Default provider: Google Gemini** (`@ai-sdk/google`, one `GOOGLE_GENERATIVE_AI_API_KEY` from Google AI Studio). `gemini-flash-lite-latest` for tagging, `gemini-3.5-flash` (pinned) for outfit generation; override with `TAGGING_MODEL` / `OUTFIT_MODEL`. Outfits were pinned after `gemini-flash-latest` repeatedly timed out on the free tier (2026-10-27). The `-latest` alias for tagging moves to newer models over time; pin it too if outputs drift.
 - Gemini's free tier fits the MVP. On the free (unpaid) tier Google may use submitted content, including clothing photos, to improve its products; enable billing (paid tier) before inviting people beyond close friends. Set a budget alert in Google Cloud billing as the spend backstop.
 
 ## 7. Today Screen (prompt-first)
