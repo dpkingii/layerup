@@ -1,0 +1,212 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { prepareImage } from "@/lib/wardrobe/image";
+import { BUCKET, listItems, photoPath, type ItemRow, type WardrobeItem } from "@/lib/wardrobe/items";
+import { cn } from "@/lib/utils";
+import { addPhotoItem, retryTagging } from "@/app/wardrobe/actions";
+import { ItemEditor } from "./item-editor";
+import { ItemTile, UploadTile } from "./item-tile";
+import { StarterPicker } from "./starter-picker";
+
+const POLL_MS = 3000;
+const UPLOAD_CONCURRENCY = 4;
+
+type Upload = { id: string; name: string; previewUrl?: string; error?: string };
+
+function isImage(file: File) {
+  return file.type.startsWith("image/") || /\.hei[cf]$/i.test(file.name);
+}
+
+export function WardrobeBoard({ userId, initialItems }: { userId: string; initialItems: WardrobeItem[] }) {
+  const [items, setItems] = useState(initialItems);
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const [editingId, setEditingId] = useState<string>();
+  const [pickingStarters, setPickingStarters] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [supabase] = useState(createClient);
+
+  // Bumped on every local change so a poll that started earlier can't overwrite it with stale rows.
+  const version = useRef(0);
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  function applyLocal(update: (prev: WardrobeItem[]) => WardrobeItem[]) {
+    version.current++;
+    setItems(update);
+  }
+
+  function upsertRow(row: ItemRow, photoUrl?: string) {
+    applyLocal((prev) => {
+      const existing = prev.find((i) => i.id === row.id);
+      const next = { ...row, photoUrl: photoUrl ?? existing?.photoUrl ?? null };
+      return existing ? prev.map((i) => (i.id === row.id ? next : i)) : [next, ...prev];
+    });
+  }
+
+  const tagging = items.filter((i) => i.tag_status === "pending").length;
+
+  useEffect(() => {
+    if (!tagging) return;
+    const timer = setInterval(async () => {
+      const started = version.current;
+      const known = new Map(itemsRef.current.flatMap((i) => (i.photo_path && i.photoUrl ? [[i.photo_path, i.photoUrl]] : [])));
+      try {
+        const fresh = await listItems(supabase, known);
+        if (version.current === started) setItems(fresh);
+      } catch (err) {
+        console.error("Polling wardrobe failed", err);
+      }
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [tagging, supabase]);
+
+  async function uploadOne(upload: Upload, file: File) {
+    const patch = (p: Partial<Upload>) => setUploads((prev) => prev.map((u) => (u.id === upload.id ? { ...u, ...p } : u)));
+    try {
+      const blob = await prepareImage(file);
+      const previewUrl = URL.createObjectURL(blob);
+      patch({ previewUrl });
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(photoPath(userId, upload.id), blob, { contentType: "image/jpeg" });
+      if (error) throw error;
+      upsertRow(await addPhotoItem(upload.id), previewUrl);
+      setUploads((prev) => prev.filter((u) => u.id !== upload.id));
+    } catch (err) {
+      console.error(`Uploading ${file.name} failed`, err);
+      patch({ error: err instanceof Error ? err.message : "Upload failed" });
+    }
+  }
+
+  async function handleFiles(fileList: FileList | null) {
+    const files = Array.from(fileList ?? []).filter(isImage);
+    if (!files.length) return;
+    const queue = files.map((file) => ({ upload: { id: crypto.randomUUID(), name: file.name }, file }));
+    setUploads((prev) => [...queue.map((q) => q.upload), ...prev]);
+    await Promise.all(
+      Array.from({ length: UPLOAD_CONCURRENCY }, async () => {
+        for (let next = queue.shift(); next; next = queue.shift()) await uploadOne(next.upload, next.file);
+      }),
+    );
+  }
+
+  async function retry(id: string) {
+    applyLocal((prev) => prev.map((i) => (i.id === id ? { ...i, tag_status: "pending" } : i)));
+    try {
+      upsertRow(await retryTagging(id));
+    } catch (err) {
+      console.error(`Retrying item ${id} failed`, err);
+      applyLocal((prev) => prev.map((i) => (i.id === id ? { ...i, tag_status: "failed" } : i)));
+    }
+  }
+
+  const editing = items.find((i) => i.id === editingId);
+  const failedUploads = uploads.filter((u) => u.error).length;
+
+  return (
+    <div
+      className="flex flex-col gap-6"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        handleFiles(e.dataTransfer.files);
+      }}
+    >
+      <div
+        className={cn(
+          "flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-6 text-center transition-colors sm:p-8",
+          dragging ? "border-primary bg-primary/5" : "border-border",
+        )}
+      >
+        <ImagePlus className="size-8 text-muted-foreground" strokeWidth={1.5} />
+        <div>
+          <p className="font-medium">Drop photos of your clothes here</p>
+          <p className="text-sm text-muted-foreground">One item per photo works best. JPEG, PNG, WebP or HEIC.</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={() => inputRef.current?.click()}>Choose photos</Button>
+          <Button variant="outline" onClick={() => setPickingStarters(true)}>
+            <Plus />
+            Add starter items
+          </Button>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          hidden
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </span>
+        {uploads.length - failedUploads > 0 && <span>· uploading {uploads.length - failedUploads}</span>}
+        {tagging > 0 && <span>· tagging {tagging}</span>}
+        {failedUploads > 0 && (
+          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setUploads((prev) => prev.filter((u) => !u.error))}>
+            Clear {failedUploads} failed upload{failedUploads === 1 ? "" : "s"}
+          </Button>
+        )}
+      </div>
+
+      {items.length + uploads.length === 0 ? (
+        <p className="py-12 text-center text-muted-foreground">Your closet is empty. Upload photos or add starter items.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {uploads.map((u) => (
+            <UploadTile key={u.id} {...u} />
+          ))}
+          {items.map((item) => (
+            <ItemTile key={item.id} item={item} onOpen={() => setEditingId(item.id)} onRetry={() => retry(item.id)} />
+          ))}
+        </div>
+      )}
+
+      {editing && (
+        <ItemEditor
+          key={editing.id}
+          item={editing}
+          onClose={() => setEditingId(undefined)}
+          onSaved={(row) => {
+            upsertRow(row);
+            setEditingId(undefined);
+          }}
+          onDeleted={(id) => {
+            applyLocal((prev) => prev.filter((i) => i.id !== id));
+            setEditingId(undefined);
+          }}
+        />
+      )}
+      {pickingStarters && (
+        <StarterPicker
+          onClose={() => setPickingStarters(false)}
+          onAdded={(rows) => {
+            applyLocal((prev) => [...rows.map((r) => ({ ...r, photoUrl: null })), ...prev]);
+            setPickingStarters(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
