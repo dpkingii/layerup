@@ -1,25 +1,9 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/login/actions";
+import { Today } from "@/components/today/today";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
 
-// Placeholder home until the Today screen (track D) lands.
 export default function Home() {
-  return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
-      <h1 className="text-2xl font-semibold">Layerup</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
-        <SignedInAs />
-      </Suspense>
-    </main>
-  );
-}
-
-async function SignedInAs() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-
   async function signOutAndRedirect() {
     "use server";
     await signOut();
@@ -27,13 +11,17 @@ async function SignedInAs() {
   }
 
   return (
-    <>
-      <p className="text-muted-foreground">Signed in as {data?.claims.email}</p>
-      <form action={signOutAndRedirect}>
-        <Button type="submit" variant="outline">
-          Sign out
-        </Button>
-      </form>
-    </>
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Layerup</h1>
+        {/* Until settings lands, sign-out lives here. */}
+        <form action={signOutAndRedirect}>
+          <Button type="submit" variant="link" size="sm" className="text-muted-foreground">
+            Sign out
+          </Button>
+        </form>
+      </header>
+      <Today />
+    </main>
   );
 }
