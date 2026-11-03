@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,15 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ItemSlot, ItemTags } from "@/lib/schemas";
 import { tagsFromRow, type ItemRow, type WardrobeItem } from "@/lib/wardrobe/items";
+import { findPreset, PRESETS } from "@/lib/wardrobe/presets";
 import { cn } from "@/lib/utils";
-import { deleteItem, updateItemTags } from "@/app/wardrobe/actions";
-import { SLOT_LABELS } from "./slots";
+import { deleteItem, suggestItemTags, updateItemTags } from "@/app/wardrobe/actions";
+import { ColorSwatch, SLOT_LABELS } from "./slots";
 
 const BLANK: ItemTags = {
   category: "",
   subtype: "",
   slot: "base",
-  colors: [""],
+  colors: [],
   pattern: "solid",
   warmth: 3,
   waterproof: false,
@@ -26,6 +28,21 @@ const BLANK: ItemTags = {
 };
 
 const PROPS = ["waterproof", "windproof", "breathable"] as const;
+const COLORS = ["black", "white", "gray", "navy", "blue", "light blue", "beige", "brown", "green", "red", "pink", "yellow"];
+const PATTERNS = ["solid", "striped", "plaid", "floral", "graphic", "polka dot"];
+
+// Chips compare lowercase names; AI and older rows may capitalize colors.
+function normalize(tags: ItemTags): ItemTags {
+  return { ...tags, colors: tags.colors.map((c) => c.trim().toLowerCase()).filter(Boolean) };
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button type="button" size="sm" variant={active ? "default" : "outline"} aria-pressed={active} onClick={onClick}>
+      {children}
+    </Button>
+  );
+}
 
 export function ItemEditor({
   item,
@@ -38,12 +55,52 @@ export function ItemEditor({
   onSaved: (row: ItemRow) => void;
   onDeleted: (id: string) => void;
 }) {
-  const [draft, setDraft] = useState<ItemTags>(() => tagsFromRow(item) ?? BLANK);
+  const [draft, setDraft] = useState<ItemTags>(() => normalize(tagsFromRow(item) ?? BLANK));
   const [error, setError] = useState<string>();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const [aiState, setAiState] = useState<"idle" | "loading" | "filled">("idle");
+  const [customColor, setCustomColor] = useState("");
+
   const set = <K extends keyof ItemTags>(key: K, value: ItemTags[K]) => setDraft((d) => ({ ...d, [key]: value }));
+
+  // Picking a known type fills everything it implies; colors and pattern stay as they are.
+  function setSubtype(value: string) {
+    const preset = findPreset(value);
+    setDraft((d) => (preset ? { ...d, ...preset } : { ...d, subtype: value }));
+  }
+
+  // Up to two colors, primary first; a third pick replaces the secondary.
+  function toggleColor(color: string) {
+    const c = color.trim().toLowerCase();
+    if (!c) return;
+    setDraft((d) => {
+      if (d.colors.includes(c)) return { ...d, colors: d.colors.filter((x) => x !== c) };
+      return { ...d, colors: d.colors.length < 2 ? [...d.colors, c] : [d.colors[0], c] };
+    });
+  }
+
+  async function autoTag() {
+    setAiState("loading");
+    setError(undefined);
+    try {
+      const result = await suggestItemTags(item.id);
+      if (result.status === "ok") {
+        setDraft(normalize(result.tags));
+        setAiState("filled");
+        return;
+      }
+      setError(
+        result.status === "rate_limited"
+          ? "AI tagging limit reached. Wait a minute and try again, or tag by hand."
+          : "AI couldn't tag this photo. Tag it by hand.",
+      );
+    } catch {
+      setError("AI couldn't tag this photo. Tag it by hand.");
+    }
+    setAiState("idle");
+  }
 
   function save() {
     const parsed = ItemTags.safeParse({
@@ -54,7 +111,7 @@ export function ItemEditor({
       colors: draft.colors.map((c) => c.trim()).filter(Boolean),
     });
     if (!parsed.success) {
-      setError("Fill in category, subtype and at least one color.");
+      setError("Fill in the item type, category and at least one color.");
       return;
     }
     startTransition(async () => {
@@ -100,11 +157,70 @@ export function ItemEditor({
               save();
             }}
           >
+            <div className="col-span-2 flex flex-col gap-2">
+              <div className="flex items-end justify-between gap-2">
+                <Label htmlFor="subtype">Item type</Label>
+                {item.photo_path && (
+                  <Button type="button" size="sm" variant="outline" disabled={aiState === "loading"} onClick={autoTag}>
+                    {aiState === "loading" ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    Auto-tag with AI
+                  </Button>
+                )}
+              </div>
+              <Input
+                id="subtype"
+                list="subtype-presets"
+                placeholder="Start typing: jeans, rain jacket, hoodie…"
+                autoFocus={!draft.subtype}
+                value={draft.subtype}
+                onChange={(e) => setSubtype(e.target.value)}
+              />
+              <datalist id="subtype-presets">
+                {PRESETS.map((preset) => (
+                  <option key={preset.subtype} value={preset.subtype} />
+                ))}
+              </datalist>
+              {aiState === "filled" && (
+                <p className="text-xs text-muted-foreground">AI filled these in. Check them, then confirm.</p>
+              )}
+            </div>
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label>Colors</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {[...new Set([...COLORS, ...draft.colors])].map((c) => (
+                  <Chip key={c} active={draft.colors.includes(c)} onClick={() => toggleColor(c)}>
+                    <ColorSwatch color={c} className="size-3" />
+                    {c}
+                    {draft.colors[0] === c && draft.colors.length > 1 && <span className="opacity-70">(main)</span>}
+                  </Chip>
+                ))}
+              </div>
+              <Input
+                aria-label="Other color"
+                placeholder="Other color, then Enter"
+                value={customColor}
+                onChange={(e) => setCustomColor(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  toggleColor(customColor);
+                  setCustomColor("");
+                }}
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label htmlFor="pattern">Pattern</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {PATTERNS.map((pt) => (
+                  <Chip key={pt} active={draft.pattern === pt} onClick={() => set("pattern", pt)}>
+                    {pt}
+                  </Chip>
+                ))}
+              </div>
+              <Input id="pattern" value={draft.pattern} onChange={(e) => set("pattern", e.target.value)} />
+            </div>
             <Field label="Category" id="category">
               <Input id="category" value={draft.category} onChange={(e) => set("category", e.target.value)} />
-            </Field>
-            <Field label="Subtype" id="subtype">
-              <Input id="subtype" value={draft.subtype} onChange={(e) => set("subtype", e.target.value)} />
             </Field>
             <Field label="Slot" id="slot">
               <Select
@@ -123,24 +239,6 @@ export function ItemEditor({
                   ))}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field label="Pattern" id="pattern">
-              <Input id="pattern" value={draft.pattern} onChange={(e) => set("pattern", e.target.value)} />
-            </Field>
-            <Field label="Primary color" id="color-0">
-              <Input
-                id="color-0"
-                value={draft.colors[0] ?? ""}
-                onChange={(e) => set("colors", [e.target.value, draft.colors[1] ?? ""])}
-              />
-            </Field>
-            <Field label="Secondary color" id="color-1">
-              <Input
-                id="color-1"
-                placeholder="Optional"
-                value={draft.colors[1] ?? ""}
-                onChange={(e) => set("colors", [draft.colors[0] ?? "", e.target.value])}
-              />
             </Field>
             <div className="col-span-2 flex flex-col gap-2">
               <Label>Warmth</Label>

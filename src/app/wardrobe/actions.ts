@@ -1,12 +1,11 @@
 "use server";
 
-import { after } from "next/server";
 import { z } from "zod";
 import { ItemTags } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { BUCKET, photoPath, type ItemRow } from "@/lib/wardrobe/items";
 import { STARTER_ITEMS } from "@/lib/wardrobe/starter-items";
-import { tagItem } from "@/lib/wardrobe/tagging";
+import { suggestTags, type SuggestResult } from "@/lib/wardrobe/tagging";
 
 const ItemId = z.uuid();
 
@@ -30,27 +29,46 @@ export async function addPhotoItem(id: string): Promise<ItemRow> {
     .select()
     .single();
   if (error) throw error;
-
-  after(() => tagItem(supabase, itemId, path));
   return data;
 }
 
-export async function retryTagging(id: string): Promise<ItemRow> {
+async function photoOf(supabase: Awaited<ReturnType<typeof createClient>>, itemId: string) {
+  const { data, error } = await supabase.from("items").select("photo_path").eq("id", itemId).single();
+  if (error) throw error;
+  if (!data.photo_path) throw new Error("Item has no photo");
+  return data.photo_path;
+}
+
+// Fills the editor form; nothing is saved until the user confirms.
+export async function suggestItemTags(id: string): Promise<SuggestResult> {
   const itemId = ItemId.parse(id);
   const { supabase } = await signedIn();
+  return suggestTags(supabase, await photoOf(supabase, itemId));
+}
+
+export type AutoTagResult = { status: "ok" | "failed"; row: ItemRow } | { status: "rate_limited" };
+
+// For grid tagging: saves suggestions as 'tagged' for later review. Only touches items
+// still untagged, so it can't overwrite tags the user confirmed while the queue ran.
+export async function autoTagItem(id: string): Promise<AutoTagResult> {
+  const itemId = ItemId.parse(id);
+  const { supabase } = await signedIn();
+  const result = await suggestTags(supabase, await photoOf(supabase, itemId));
+  if (result.status === "rate_limited") return result;
 
   const { data, error } = await supabase
     .from("items")
-    .update({ tag_status: "pending" })
+    .update(result.status === "ok" ? { ...result.tags, tag_status: "tagged" } : { tag_status: "failed" })
     .eq("id", itemId)
-    .eq("tag_status", "failed")
-    .not("photo_path", "is", null)
+    .in("tag_status", ["pending", "failed"])
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (data) return { status: result.status, row: data };
 
-  after(() => tagItem(supabase, itemId, data.photo_path!));
-  return data;
+  const { data: current, error: currentError } = await supabase.from("items").select().eq("id", itemId).single();
+  if (currentError) throw currentError;
+  return { status: "ok", row: current };
 }
 
 export async function updateItemTags(id: string, tags: ItemTags): Promise<ItemRow> {

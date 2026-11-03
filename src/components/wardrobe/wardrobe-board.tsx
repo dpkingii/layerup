@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImagePlus, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { prepareImage } from "@/lib/wardrobe/image";
-import { BUCKET, listItems, photoPath, type ItemRow, type WardrobeItem } from "@/lib/wardrobe/items";
+import { BUCKET, photoPath, type ItemRow, type WardrobeItem } from "@/lib/wardrobe/items";
 import { cn } from "@/lib/utils";
-import { addPhotoItem, retryTagging } from "@/app/wardrobe/actions";
+import { addPhotoItem } from "@/app/wardrobe/actions";
 import { ItemEditor } from "./item-editor";
 import { ItemTile, UploadTile } from "./item-tile";
 import { StarterPicker } from "./starter-picker";
+import { useTagQueue } from "./use-tag-queue";
 
-const POLL_MS = 3000;
 const UPLOAD_CONCURRENCY = 4;
 
 type Upload = { id: string; name: string; previewUrl?: string; error?: string };
@@ -30,42 +30,16 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
   const inputRef = useRef<HTMLInputElement>(null);
   const [supabase] = useState(createClient);
 
-  // Bumped on every local change so a poll that started earlier can't overwrite it with stale rows.
-  const version = useRef(0);
-  const itemsRef = useRef(items);
-  useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-
-  function applyLocal(update: (prev: WardrobeItem[]) => WardrobeItem[]) {
-    version.current++;
-    setItems(update);
-  }
-
   function upsertRow(row: ItemRow, photoUrl?: string) {
-    applyLocal((prev) => {
+    setItems((prev) => {
       const existing = prev.find((i) => i.id === row.id);
       const next = { ...row, photoUrl: photoUrl ?? existing?.photoUrl ?? null };
       return existing ? prev.map((i) => (i.id === row.id ? next : i)) : [next, ...prev];
     });
   }
 
-  const tagging = items.filter((i) => i.tag_status === "pending").length;
-
-  useEffect(() => {
-    if (!tagging) return;
-    const timer = setInterval(async () => {
-      const started = version.current;
-      const known = new Map(itemsRef.current.flatMap((i) => (i.photo_path && i.photoUrl ? [[i.photo_path, i.photoUrl]] : [])));
-      try {
-        const fresh = await listItems(supabase, known);
-        if (version.current === started) setItems(fresh);
-      } catch (err) {
-        console.error("Polling wardrobe failed", err);
-      }
-    }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [tagging, supabase]);
+  const tagQueue = useTagQueue((row) => upsertRow(row));
+  const untagged = items.filter((i) => i.photo_path && (i.tag_status === "pending" || i.tag_status === "failed"));
 
   async function uploadOne(upload: Upload, file: File) {
     const patch = (p: Partial<Upload>) => setUploads((prev) => prev.map((u) => (u.id === upload.id ? { ...u, ...p } : u)));
@@ -95,16 +69,6 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
         for (let next = queue.shift(); next; next = queue.shift()) await uploadOne(next.upload, next.file);
       }),
     );
-  }
-
-  async function retry(id: string) {
-    applyLocal((prev) => prev.map((i) => (i.id === id ? { ...i, tag_status: "pending" } : i)));
-    try {
-      upsertRow(await retryTagging(id));
-    } catch (err) {
-      console.error(`Retrying item ${id} failed`, err);
-      applyLocal((prev) => prev.map((i) => (i.id === id ? { ...i, tag_status: "failed" } : i)));
-    }
   }
 
   const editing = items.find((i) => i.id === editingId);
@@ -162,7 +126,26 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
           {items.length} item{items.length === 1 ? "" : "s"}
         </span>
         {uploads.length - failedUploads > 0 && <span>· uploading {uploads.length - failedUploads}</span>}
-        {tagging > 0 && <span>· tagging {tagging}</span>}
+        {untagged.length > 0 && (
+          <span>
+            · {untagged.length} item{untagged.length === 1 ? "" : "s"} need{untagged.length === 1 ? "s" : ""} tags
+          </span>
+        )}
+        {tagQueue.busy ? (
+          <Button variant="outline" size="sm" onClick={tagQueue.stop}>
+            Stop AI tagging ({tagQueue.states.size} left)
+          </Button>
+        ) : (
+          untagged.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => tagQueue.enqueue(untagged.map((i) => i.id))}>
+              <Sparkles />
+              Tag all with AI
+            </Button>
+          )
+        )}
+        {tagQueue.quotaExhausted && (
+          <span className="text-destructive">AI tagging limit reached for now. Try again later or tag by hand.</span>
+        )}
         {failedUploads > 0 && (
           <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setUploads((prev) => prev.filter((u) => !u.error))}>
             Clear {failedUploads} failed upload{failedUploads === 1 ? "" : "s"}
@@ -178,7 +161,13 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
             <UploadTile key={u.id} {...u} />
           ))}
           {items.map((item) => (
-            <ItemTile key={item.id} item={item} onOpen={() => setEditingId(item.id)} onRetry={() => retry(item.id)} />
+            <ItemTile
+              key={item.id}
+              item={item}
+              queueState={tagQueue.states.get(item.id)}
+              onOpen={() => setEditingId(item.id)}
+              onAutoTag={() => tagQueue.enqueue([item.id])}
+            />
           ))}
         </div>
       )}
@@ -193,7 +182,7 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
             setEditingId(undefined);
           }}
           onDeleted={(id) => {
-            applyLocal((prev) => prev.filter((i) => i.id !== id));
+            setItems((prev) => prev.filter((i) => i.id !== id));
             setEditingId(undefined);
           }}
         />
@@ -202,7 +191,7 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
         <StarterPicker
           onClose={() => setPickingStarters(false)}
           onAdded={(rows) => {
-            applyLocal((prev) => [...rows.map((r) => ({ ...r, photoUrl: null })), ...prev]);
+            setItems((prev) => [...rows.map((r) => ({ ...r, photoUrl: null })), ...prev]);
             setPickingStarters(false);
           }}
         />

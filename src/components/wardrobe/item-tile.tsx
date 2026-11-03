@@ -1,18 +1,28 @@
-import { CircleAlert, Loader2, RefreshCw } from "lucide-react";
+import { CircleAlert, Clock, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WardrobeItem } from "@/lib/wardrobe/items";
 import { ColorSwatch, SLOT_ICONS, SLOT_LABELS } from "./slots";
+import type { QueueState } from "./use-tag-queue";
+
+const QUEUE_LABELS: Record<QueueState, string> = {
+  queued: "Queued for AI…",
+  tagging: "AI tagging…",
+  waiting: "Waiting for AI quota…",
+};
 
 export function ItemTile({
   item,
+  queueState,
   onOpen,
-  onRetry,
+  onAutoTag,
 }: {
   item: WardrobeItem;
+  queueState?: QueueState;
   onOpen: () => void;
-  onRetry: () => void;
+  onAutoTag: () => void;
 }) {
   const Icon = item.slot ? SLOT_ICONS[item.slot] : null;
+  const QueueIcon = queueState === "waiting" ? Clock : Loader2;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -43,9 +53,8 @@ export function ItemTile({
             </div>
           )}
           {item.tag_status === "pending" && (
-            <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-md bg-background/85 py-1 text-xs font-medium backdrop-blur">
-              <Loader2 className="size-3.5 animate-spin" />
-              Tagging…
+            <span className="absolute top-2 left-2 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
+              Needs tags
             </span>
           )}
           {item.tag_status === "tagged" && (
@@ -60,11 +69,19 @@ export function ItemTile({
             </span>
           )}
         </button>
-        {item.tag_status === "failed" && (
-          <Button size="sm" variant="secondary" onClick={onRetry} className="absolute inset-x-2 bottom-2">
-            <RefreshCw />
-            Retry
-          </Button>
+        {queueState ? (
+          <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-md bg-background/85 py-1 text-xs font-medium backdrop-blur">
+            <QueueIcon className={queueState === "waiting" ? "size-3.5" : "size-3.5 animate-spin"} />
+            {QUEUE_LABELS[queueState]}
+          </span>
+        ) : (
+          item.photo_path &&
+          (item.tag_status === "pending" || item.tag_status === "failed") && (
+            <Button size="sm" variant="secondary" onClick={onAutoTag} className="absolute inset-x-2 bottom-2">
+              {item.tag_status === "failed" ? <RefreshCw /> : <Sparkles />}
+              {item.tag_status === "failed" ? "Retry AI" : "Auto-tag"}
+            </Button>
+          )
         )}
       </div>
       <div className="min-w-0 px-0.5">

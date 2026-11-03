@@ -16,19 +16,15 @@ export function tagsFromRow(item: ItemRow): ItemTags | null {
   return parsed.success ? parsed.data : null;
 }
 
-// `knownUrls` maps photo_path to an existing URL so polling doesn't re-sign (and re-download) every image.
-export async function listItems(
-  supabase: SupabaseClient<Database>,
-  knownUrls: ReadonlyMap<string, string> = new Map(),
-): Promise<WardrobeItem[]> {
+export async function listItems(supabase: SupabaseClient<Database>): Promise<WardrobeItem[]> {
   const { data, error } = await supabase
     .from("items")
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  const urls = new Map(knownUrls);
-  const toSign = data.flatMap((i) => (i.photo_path && !urls.has(i.photo_path) ? [i.photo_path] : []));
+  const urls = new Map<string, string>();
+  const toSign = data.flatMap((i) => (i.photo_path ? [i.photo_path] : []));
   if (toSign.length) {
     const { data: signed, error: signError } = await supabase.storage
       .from(BUCKET)
