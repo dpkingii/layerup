@@ -1,9 +1,10 @@
 "use server";
 
+import { APICallError, RetryError } from "ai";
 import { z } from "zod";
 import { Outfit, DayContext, ShuffleFeedback, WeatherWindow } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
-import { generateOutfit as runModel, loadCloset, loadProfile, toFeedbackStrings } from "@/lib/outfit/generate";
+import { canDress, generateOutfit as runModel, loadCloset, loadProfile, toFeedbackStrings } from "@/lib/outfit/generate";
 import { SLOT_ORDER } from "@/lib/outfit/labels";
 import type { OutfitTile, SuggestionView } from "@/lib/outfit/types";
 
@@ -49,6 +50,10 @@ export async function generateOutfit(input: GenerateInput): Promise<ActionResult
         }),
     ]);
 
+    if (!canDress(closet)) {
+      return { ok: false, error: "Your closet needs at least a top, a bottom and shoes. Add or tag them in Wardrobe." };
+    }
+
     const outfit = await runModel({ closet, profile, weather, context, history });
 
     const { data: row, error } = await supabase
@@ -83,6 +88,10 @@ export async function generateOutfit(input: GenerateInput): Promise<ActionResult
 
     return { ok: true, data: { id: row.id, context, tiles, rationale: outfit.rationale } };
   } catch (e) {
+    const cause = RetryError.isInstance(e) ? e.lastError : e;
+    if (APICallError.isInstance(cause) && cause.statusCode === 429) {
+      return { ok: false, error: "AI limit reached. Wait a minute and try again." };
+    }
     console.error("generateOutfit failed", e);
     return { ok: false, error: "Couldn't put an outfit together. Try again." };
   }

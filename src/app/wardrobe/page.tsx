@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AppNav } from "@/components/app-nav";
 import { WardrobeBoard } from "@/components/wardrobe/wardrobe-board";
 import { createClient } from "@/lib/supabase/server";
 import { listItems } from "@/lib/wardrobe/items";
@@ -6,6 +7,7 @@ import { listItems } from "@/lib/wardrobe/items";
 export default function WardrobePage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 sm:p-6">
+      <AppNav />
       <h1 className="text-2xl font-semibold">Wardrobe</h1>
       <Suspense fallback={<p className="text-muted-foreground">Loading your closet…</p>}>
         <Wardrobe />

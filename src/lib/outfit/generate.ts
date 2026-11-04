@@ -4,12 +4,9 @@ import type { z } from "zod";
 import { outfitModel } from "@/lib/ai";
 import { Outfit, type DayContext, type ShuffleFeedback, type WeatherWindow } from "@/lib/schemas";
 import type { createClient } from "@/lib/supabase/server";
-import { FIXTURE_CLOSET, FIXTURE_PROFILE } from "./fixtures";
 import type { ClosetItem, OutfitProfile } from "./types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-const MIN_CLOSET_SIZE = 6;
 
 const SENSITIVITY_OFFSET_F: Record<OutfitProfile["tempSensitivity"], number> = {
   runs_cold: -5,
@@ -68,14 +65,19 @@ export async function loadCloset(supabase: Supabase): Promise<ClosetItem[]> {
         ]
       : [],
   );
-  return items.length >= MIN_CLOSET_SIZE ? items : FIXTURE_CLOSET;
+  return items;
 }
 
 export async function loadProfile(supabase: Supabase): Promise<OutfitProfile> {
-  const { data, error } = await supabase.from("profiles").select("vibes, temp_sensitivity, fit_pref").maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("vibes, temp_sensitivity, fit_pref").single();
   if (error) throw error;
-  if (!data || data.vibes.length === 0) return FIXTURE_PROFILE;
   return { vibes: data.vibes, tempSensitivity: data.temp_sensitivity, fitPref: data.fit_pref };
+}
+
+// The minimum the prompt's structure rule can be satisfied with.
+export function canDress(closet: ClosetItem[]): boolean {
+  const has = (slot: ClosetItem["slot"]) => closet.some((item) => item.slot === slot);
+  return has("shoes") && (has("one_piece") || (has("base") && has("bottom")));
 }
 
 export type SessionTurn = { outfit: Outfit; feedback: string[] | null };

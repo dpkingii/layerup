@@ -18,7 +18,8 @@ const ProfileInput = z
     day_start: Time,
     day_end: Time,
   })
-  .refine((p) => p.day_end > p.day_start, { message: "Your day has to end after it starts." });
+  // An end before the start is an overnight window; the weather window rolls it into the next day.
+  .refine((p) => p.day_end !== p.day_start, { message: "Pick different start and end times." });
 
 function parse(formData: FormData) {
   return ProfileInput.safeParse({

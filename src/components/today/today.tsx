@@ -5,11 +5,10 @@ import type { z } from "zod";
 import { CheckCircle2 } from "lucide-react";
 import { generateOutfit, wearOutfit, type GenerateInput } from "@/app/today/actions";
 import { Button } from "@/components/ui/button";
-import { WEATHER_FIXTURES, type WeatherFixtureKey } from "@/lib/outfit/fixtures";
 import { CONTEXT_LABELS } from "@/lib/outfit/labels";
 import type { SuggestionView } from "@/lib/outfit/types";
-import type { DayContext, FeedbackReason } from "@/lib/schemas";
-import { FixtureWeather } from "./fixture-weather";
+import type { DayContext, FeedbackReason, WeatherWindow } from "@/lib/schemas";
+import { WeatherSection } from "@/components/weather/weather-section";
 import { OutfitGrid, OutfitGridSkeleton } from "./outfit-grid";
 import { ShufflePanel } from "./shuffle-panel";
 
@@ -22,7 +21,7 @@ const SHUFFLE_NUDGE_AFTER = 5;
 const UNREACHABLE = { ok: false, error: "Couldn't reach Layerup. Check your connection and try again." } as const;
 
 export function Today() {
-  const [weatherKey, setWeatherKey] = useState<WeatherFixtureKey>("coolRain");
+  const [weather, setWeather] = useState<WeatherWindow | null>(null);
   const [context, setContext] = useState<Context | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<SuggestionView | null>(null);
@@ -49,6 +48,7 @@ export function Today() {
   }
 
   function pickContext(next: Context) {
+    if (!weather) return;
     const id = crypto.randomUUID();
     setContext(next);
     setSessionId(id);
@@ -56,7 +56,7 @@ export function Today() {
     setShuffles(0);
     setWorn(false);
     closeShuffle();
-    generate({ sessionId: id, context: next, weather: WEATHER_FIXTURES[weatherKey].window });
+    generate({ sessionId: id, context: next, weather });
   }
 
   function closeShuffle() {
@@ -71,11 +71,11 @@ export function Today() {
   }
 
   function submitShuffle() {
-    if (!context || !sessionId || !suggestion) return;
+    if (!context || !sessionId || !suggestion || !weather) return;
     const input: GenerateInput = {
       sessionId,
       context,
-      weather: WEATHER_FIXTURES[weatherKey].window,
+      weather,
       rejected: {
         suggestionId: suggestion.id,
         feedback: { reasons: [...reasons], dislikedItemIds: [...disliked] },
@@ -98,7 +98,7 @@ export function Today() {
 
   return (
     <div className="flex flex-col gap-6">
-      <FixtureWeather value={weatherKey} onChange={setWeatherKey} />
+      <WeatherSection onWeatherChange={setWeather} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{context ? "Today is for" : "What's today for?"}</h2>
@@ -109,7 +109,7 @@ export function Today() {
               variant={c === context ? "default" : "outline"}
               size="lg"
               aria-pressed={c === context}
-              disabled={generating || wearing}
+              disabled={!weather || generating || wearing}
               onClick={() => pickContext(c)}
             >
               {CONTEXT_LABELS[c]}

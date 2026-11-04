@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { CloudRain, LoaderCircle, MapPin, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WeatherWindow } from "@/lib/schemas";
@@ -26,19 +26,23 @@ type State =
 export function WeatherSection({ onWeatherChange }: { onWeatherChange: (w: WeatherWindow) => void }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [settings, setSettings] = useState<WeatherSettings | null>(null);
+  const latestRequest = useRef(0);
 
   async function show(place: Place, s: WeatherSettings) {
+    const request = ++latestRequest.current;
     setState({ status: "loading" });
     const report = await loadWeather(place, s.dayStart, s.dayEnd);
+    // Picking cities in quick succession must not let an older response win.
+    if (request !== latestRequest.current) return;
     if (!report) return setState({ status: "failed", place });
     setState({ status: "ready", report });
     onWeatherChange(report.window);
   }
 
   const showOnMount = useEffectEvent(show);
-  // A late position fix must not override a city the user picked while the prompt was open.
+  // A late position fix must not override a city the user picked or is picking while the prompt was open.
   const showPosition = useEffectEvent((place: Place, s: WeatherSettings) => {
-    if (state.status === "loading") show(place, s);
+    if (latestRequest.current === 0 && state.status === "loading") show(place, s);
   });
 
   useEffect(() => {
