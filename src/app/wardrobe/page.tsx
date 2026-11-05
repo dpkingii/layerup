@@ -10,8 +10,7 @@ export default function WardrobePage() {
   return (
     <>
       <AppNav />
-      <main className={cn(PAGE_FRAME, "flex flex-1 flex-col gap-6 py-6")}>
-        <h1 className="text-2xl font-semibold">Wardrobe</h1>
+      <main className={cn(PAGE_FRAME, "flex flex-1 flex-col py-8")}>
         <Suspense fallback={<p className="text-muted-foreground">Loading your closet…</p>}>
           <Wardrobe />
         </Suspense>

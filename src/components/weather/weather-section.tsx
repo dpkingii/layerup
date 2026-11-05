@@ -114,7 +114,7 @@ export function WeatherSection({ onWeatherChange }: { onWeatherChange: (w: Weath
 
   return (
     <Shell>
-      <span className="flex items-center gap-1 font-medium">
+      <span className="flex items-center gap-1 font-medium text-foreground">
         <MapPin className="size-4" />
         {w.locationName}
       </span>
@@ -139,7 +139,7 @@ export function WeatherSection({ onWeatherChange }: { onWeatherChange: (w: Weath
         href="https://open-meteo.com/"
         target="_blank"
         rel="noreferrer"
-        className="ml-auto text-xs text-muted-foreground hover:underline"
+        className="text-xs hover:underline"
       >
         Weather data by Open-Meteo.com
       </a>
@@ -151,7 +151,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <section
       aria-label="Weather"
-      className="flex min-h-12 flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-transparent bg-card px-4 py-2.5 text-sm shadow-sm ring-1 ring-foreground/10"
+      className="flex min-h-9 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm text-muted-foreground"
     >
       {children}
     </section>

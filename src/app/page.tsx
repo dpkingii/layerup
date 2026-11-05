@@ -21,7 +21,8 @@ export default function Home() {
 
 async function OnboardedStylist() {
   await getOnboardedProfile();
-  const items = await listItems(await createClient());
+  const supabase = await createClient();
+  const items = await listItems(supabase);
   const closet: StylistItem[] = items.flatMap((item) => {
     const tags = item.tag_status === "pending" || item.tag_status === "failed" ? null : tagsFromRow(item);
     return tags

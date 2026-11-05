@@ -22,4 +22,6 @@ export type SuggestionView = {
   id: string;
   items: Outfit["items"];
   rationale: string;
+  // A person the user mentioned admiring who isn't saved yet; the chat offers to save them.
+  mentionedIcon: string | null;
 };

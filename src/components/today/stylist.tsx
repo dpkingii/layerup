@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowUp, CheckCircle2, RotateCcw } from "lucide-react";
+import Link from "next/link";
 import { askStylist, wearOutfit, type AskInput } from "@/app/today/actions";
 import { Button } from "@/components/ui/button";
 import { WeatherSection } from "@/components/weather/weather-section";
 import type { StylistItem, SuggestionView } from "@/lib/outfit/types";
 import type { Outfit, WeatherWindow } from "@/lib/schemas";
+import { addStyleIcon } from "@/lib/style-icons/actions";
 import { cn } from "@/lib/utils";
 import { OutfitCard, OutfitCardSkeleton } from "./outfit-card";
 
@@ -109,13 +111,13 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
             type="button"
             disabled={!weather || busy}
             onClick={() => send(chip)}
-            className="rounded-full border bg-card px-3 py-1.5 text-sm transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+            className="h-8 rounded-full bg-secondary px-3.5 text-sm font-medium transition-colors outline-none hover:bg-secondary/70 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           >
             {chip}
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-2 rounded-full border bg-card p-1.5 pl-4 shadow-sm focus-within:ring-3 focus-within:ring-ring/30">
+      <div className="flex h-12 items-center gap-2 rounded-full bg-secondary p-1.5 pl-5 focus-within:ring-3 focus-within:ring-ring/30">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -128,7 +130,7 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
           <ArrowUp />
         </Button>
       </div>
-      {!weather && <p className="text-xs text-muted-foreground">Waiting for the weather before styling…</p>}
+      {!weather && <p className="text-center text-xs text-muted-foreground">Waiting for the weather before styling…</p>}
     </form>
   );
 
@@ -147,7 +149,7 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
           </div>
         ) : (
           <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={startOver} disabled={busy}>
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={startOver} disabled={busy}>
               <RotateCcw />
               Start over
             </Button>
@@ -156,18 +158,24 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
 
         {turns.map((turn, i) =>
           turn.kind === "user" ? (
-            <p key={i} className="max-w-[80%] self-end rounded-3xl rounded-br-md bg-primary px-4 py-2 text-primary-foreground">
+            <p key={i} className="max-w-[80%] self-end rounded-3xl bg-secondary px-4 py-2.5">
               {turn.text}
             </p>
           ) : (
-            <StylistBubble key={turn.suggestion.id} faded={i !== latestIndex}>
-              <OutfitCard
-                items={turn.items}
-                closet={closetById}
-                editable={i === latestIndex && !turn.worn && !busy}
-                onChange={(items) => updateLatest({ items })}
-              />
-              <p className="text-sm">{turn.suggestion.rationale}</p>
+            <StylistReply
+              key={turn.suggestion.id}
+              faded={i !== latestIndex}
+              look={
+                <OutfitCard
+                  items={turn.items}
+                  closet={closetById}
+                  editable={i === latestIndex && !turn.worn && !busy}
+                  onChange={(items) => updateLatest({ items })}
+                />
+              }
+            >
+              <p className="text-base text-pretty">{turn.suggestion.rationale}</p>
+              {turn.suggestion.mentionedIcon && <IconOffer name={turn.suggestion.mentionedIcon} />}
               {i === latestIndex &&
                 (turn.worn ? (
                   <p className="flex items-center gap-2 text-sm font-medium">
@@ -175,33 +183,29 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
                     Logged. Have a good day in it.
                   </p>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button onClick={wear} disabled={busy}>
+                  <div className="flex flex-col items-start gap-2">
+                    <Button size="lg" className="rounded-full px-6" onClick={wear} disabled={busy}>
                       {wearing ? "Saving…" : "Wear this"}
                     </Button>
                     {closet.length > 1 && (
-                      <span className="text-xs text-muted-foreground">Swipe a piece to swap it.</span>
+                      <span className="text-xs text-muted-foreground">Swipe a piece, or use its arrows, to swap it.</span>
                     )}
                   </div>
                 ))}
-            </StylistBubble>
+            </StylistReply>
           ),
         )}
 
         {thinking && (
-          <StylistBubble>
-            <OutfitCardSkeleton />
+          <StylistReply look={<OutfitCardSkeleton />}>
             <p className="text-sm text-muted-foreground">Pulling a look together…</p>
-          </StylistBubble>
+          </StylistReply>
         )}
 
         {error && (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/30 p-4 text-sm"
-          >
+          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
             <span className="text-destructive">{error.message}</span>
-            <Button variant="outline" onClick={error.retry}>
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={error.retry}>
               Retry
             </Button>
           </div>
@@ -214,15 +218,54 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
   );
 }
 
-function StylistBubble({ faded, children }: { faded?: boolean; children: React.ReactNode }) {
+// Saving makes one AI call to read their style, so it only happens on tap.
+function IconOffer({ name }: { name: string }) {
+  const [result, setResult] = useState<{ error: boolean; text: React.ReactNode } | null>(null);
+  const [pending, start] = useTransition();
+
+  function save() {
+    start(async () => {
+      const r = await addStyleIcon(name).catch(() => null);
+      if (r?.ok) {
+        setResult({ error: false, text: `Saved ${name} to your style icons.` });
+      } else if (r?.reason === "unknown") {
+        setResult({
+          error: false,
+          text: (
+            <>
+              I don&apos;t know {name}&apos;s style well. Describe it in{" "}
+              <Link href="/settings/style-icons" className="underline underline-offset-2">
+                Settings
+              </Link>
+              .
+            </>
+          ),
+        });
+      } else {
+        setResult({ error: true, text: r?.error ?? "Couldn't reach Layerup. Try again." });
+      }
+    });
+  }
+
+  if (result) {
+    return <p className={cn("text-sm", result.error ? "text-destructive" : "text-muted-foreground")}>{result.text}</p>;
+  }
   return (
-    <div
-      className={cn(
-        "flex max-w-xl flex-col gap-3 rounded-3xl rounded-bl-md border border-transparent bg-card p-3 shadow-sm ring-1 ring-foreground/10 transition-opacity sm:p-4",
-        faded && "opacity-60",
-      )}
-    >
-      {children}
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted-foreground">Save {name} to your style icons?</span>
+      <Button variant="secondary" size="sm" className="rounded-full" onClick={save} disabled={pending}>
+        {pending ? "Reading their style…" : "Save"}
+      </Button>
+    </div>
+  );
+}
+
+// Laid out like a Pinterest pin closeup: the look on an image panel, the note and actions beside it.
+function StylistReply({ look, faded, children }: { look: React.ReactNode; faded?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={cn("grid items-center gap-5 transition-opacity sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:gap-8", faded && "opacity-50")}>
+      <div className="rounded-3xl bg-card px-3 py-4">{look}</div>
+      <div className="flex flex-col gap-4">{children}</div>
     </div>
   );
 }

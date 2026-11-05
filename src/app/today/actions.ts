@@ -1,10 +1,10 @@
 "use server";
 
-import { APICallError, RetryError } from "ai";
 import { z } from "zod";
+import { aiUnavailableMessage } from "@/lib/ai";
 import { Outfit, WeatherWindow } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
-import { canDress, generateOutfit, loadCloset, loadProfile, type SessionTurn } from "@/lib/outfit/generate";
+import { canDress, generateOutfit, loadCloset, loadProfile, loadReadyIcons, type SessionTurn } from "@/lib/outfit/generate";
 import { SLOT_ORDER } from "@/lib/outfit/labels";
 import type { SuggestionView } from "@/lib/outfit/types";
 
@@ -33,9 +33,10 @@ export async function askStylist(input: AskInput): Promise<ActionResult<Suggesti
   try {
     if (kept) await saveKept(supabase, kept.suggestionId, kept.items);
 
-    const [closet, profile, history] = await Promise.all([
+    const [closet, profile, icons, history] = await Promise.all([
       loadCloset(supabase),
       loadProfile(supabase),
+      loadReadyIcons(supabase),
       supabase
         .from("suggestions")
         .select("prompt, outfit, feedback")
@@ -55,7 +56,7 @@ export async function askStylist(input: AskInput): Promise<ActionResult<Suggesti
       return { ok: false, error: "Your closet needs at least a top, a bottom and shoes. Add or tag them in Wardrobe." };
     }
 
-    const { context, ...reply } = await generateOutfit({ closet, profile, weather, message, history });
+    const { context, mentionedIcon, ...reply } = await generateOutfit({ closet, profile, icons, weather, message, history });
     const outfit = { ...reply, items: reply.items.toSorted((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)) };
 
     const { data: row, error } = await supabase
@@ -65,12 +66,10 @@ export async function askStylist(input: AskInput): Promise<ActionResult<Suggesti
       .single();
     if (error) throw error;
 
-    return { ok: true, data: { id: row.id, items: outfit.items, rationale: outfit.rationale } };
+    return { ok: true, data: { id: row.id, items: outfit.items, rationale: outfit.rationale, mentionedIcon } };
   } catch (e) {
-    const cause = RetryError.isInstance(e) ? e.lastError : e;
-    if (APICallError.isInstance(cause) && cause.statusCode === 429) {
-      return { ok: false, error: "AI limit reached. Wait a minute and try again." };
-    }
+    const unavailable = aiUnavailableMessage(e);
+    if (unavailable) return { ok: false, error: unavailable };
     console.error("askStylist failed", e);
     return { ok: false, error: "Couldn't put an outfit together. Try again." };
   }

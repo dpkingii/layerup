@@ -43,6 +43,7 @@ const COLOR_ALIASES: Record<string, string> = {
   "light blue": "lightblue",
   "dark blue": "darkblue",
   brown: "#6f4e37",
+  "dark brown": "#4a3424",
   burgundy: "#800020",
   multicolor: "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
 };

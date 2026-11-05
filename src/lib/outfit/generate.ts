@@ -1,9 +1,10 @@
 import "server-only";
 import { generateText, Output } from "ai";
-import type { z } from "zod";
+import { z } from "zod";
 import { outfitModel } from "@/lib/ai";
 import { DayContext, Outfit, type WeatherWindow } from "@/lib/schemas";
 import type { createClient } from "@/lib/supabase/server";
+import type { StyleIcon } from "@/lib/style-icons";
 import type { ClosetItem, OutfitProfile } from "./types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -25,9 +26,13 @@ Match what they're dressing for and their vibes and fit. Set context to the clos
 
 Earlier turns of this conversation are listed oldest first. Treat the latest message as a change to the latest outfit unless it describes a new occasion: keep what they didn't ask to change. "Warmer" means more total warmth or another layer; "lighter" the reverse. When the user swapped pieces themselves, the outfit shown is what they kept; respect those choices.
 
-Rationale: one or two sentences to the user ("you"), tying the pick to their request, the actual temperatures and rain timing. Don't mention item ids or warmth numbers.`;
+Style icons, when listed, are people whose style the user likes. For everyday requests, treat the icons and the user's vibes as one taste with equal weight, and don't mention the icons. When the latest message asks to dress like one of them, lead with that icon's style within the weather rules: the rationale says how the outfit nods to them and, if one of their signature pieces is missing from the closet, names that one missing piece.
 
-const StylistReply = Outfit.extend({ context: DayContext });
+Rationale: one or two sentences to the user ("you"), tying the pick to their request, the actual temperatures and rain timing. Don't mention item ids or warmth numbers.
+
+mentionedIcon: when the latest message names a person whose style the user admires and who isn't listed under Style icons, their name as written; otherwise null.`;
+
+const StylistReply = Outfit.extend({ context: DayContext, mentionedIcon: z.string().nullable() });
 export type StylistReply = z.infer<typeof StylistReply>;
 
 export async function loadCloset(supabase: Supabase): Promise<ClosetItem[]> {
@@ -59,6 +64,13 @@ export async function loadCloset(supabase: Supabase): Promise<ClosetItem[]> {
   return items;
 }
 
+// Placeholders have no profile yet, so they stay out of the prompt.
+export async function loadReadyIcons(supabase: Supabase): Promise<StyleIcon[]> {
+  const { data, error } = await supabase.from("style_icons").select("*").eq("status", "ready").order("created_at");
+  if (error) throw error;
+  return data;
+}
+
 export async function loadProfile(supabase: Supabase): Promise<OutfitProfile> {
   const { data, error } = await supabase.from("profiles").select("vibes, temp_sensitivity, fit_pref").single();
   if (error) throw error;
@@ -76,6 +88,7 @@ export type SessionTurn = { prompt: string; outfit: Outfit; edited: boolean };
 export async function generateOutfit(input: {
   closet: ClosetItem[];
   profile: OutfitProfile;
+  icons: StyleIcon[];
   weather: WeatherWindow;
   message: string;
   history: SessionTurn[];
@@ -96,6 +109,7 @@ export async function generateOutfit(input: {
 function buildPrompt({
   closet,
   profile,
+  icons,
   weather,
   message,
   history,
@@ -106,6 +120,7 @@ function buildPrompt({
   return [
     `## Weather\n${describeWeather(weather, offset)}`,
     `## User\nVibes: ${profile.vibes.join(", ")}\nFit: ${profile.fitPref ?? "no preference"}\nTemperature sensitivity: ${profile.tempSensitivity.replace("_", " ")}`,
+    icons.length > 0 ? `## Style icons\n${icons.map(describeIcon).join("\n")}` : "",
     `## Closet (one JSON item per line)\n${closetLines.join("\n")}`,
     history.length > 0 ? `## Conversation so far (oldest first)\n${history.map(describeTurn).join("\n")}` : "",
     `## Latest message\n${message}`,
@@ -132,6 +147,10 @@ function describeWeather(weather: WeatherWindow, offset: number): string {
     `Max precip ${weather.maxPrecipChance}%, max wind ${Math.round(weather.maxWindMph)} mph.${sensitivityNote}`,
     `Hourly:\n${hourly.join("\n")}`,
   ].join("\n");
+}
+
+function describeIcon(icon: StyleIcon): string {
+  return `- ${icon.name}: ${icon.summary}. Signature pieces: ${icon.signature_pieces.join(", ")}. Palette: ${icon.palette.join(", ")}. Silhouette: ${icon.silhouette}. Layering: ${icon.layering}.`;
 }
 
 function describeTurn({ prompt, outfit, edited }: SessionTurn, i: number): string {

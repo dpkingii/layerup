@@ -13,6 +13,7 @@ const LINKS = [
 
 export function AppNav() {
   const pathname = usePathname();
+  const isActive = (href: string) => (href === "/" ? pathname === href : pathname.startsWith(href));
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
       <nav className={cn(PAGE_FRAME, "flex h-14 items-center gap-6 text-sm")}>
@@ -23,10 +24,10 @@ export function AppNav() {
           <Link
             key={href}
             href={href}
-            aria-current={pathname === href ? "page" : undefined}
+            aria-current={isActive(href) ? "page" : undefined}
             className={cn(
               "transition-colors hover:text-foreground",
-              pathname === href ? "font-medium text-foreground" : "text-muted-foreground",
+              isActive(href) ? "font-medium text-foreground" : "text-muted-foreground",
             )}
           >
             {label}

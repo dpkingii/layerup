@@ -136,6 +136,53 @@ export type Database = {
         }
         Relationships: []
       }
+      style_icons: {
+        Row: {
+          created_at: string
+          id: string
+          layering: string | null
+          name: string
+          palette: string[]
+          signature_pieces: string[]
+          silhouette: string | null
+          status: Database["public"]["Enums"]["style_icon_status"]
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          layering?: string | null
+          name: string
+          palette?: string[]
+          signature_pieces?: string[]
+          silhouette?: string | null
+          status?: Database["public"]["Enums"]["style_icon_status"]
+          summary?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          layering?: string | null
+          name?: string
+          palette?: string[]
+          signature_pieces?: string[]
+          silhouette?: string | null
+          status?: Database["public"]["Enums"]["style_icon_status"]
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_icons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suggestions: {
         Row: {
           context: Database["public"]["Enums"]["day_context"]
@@ -204,6 +251,7 @@ export type Database = {
         | "one_piece"
         | "shoes"
         | "accessory"
+      style_icon_status: "ready" | "placeholder"
       tag_status: "pending" | "tagged" | "confirmed" | "failed"
       temp_sensitivity: "runs_cold" | "neutral" | "runs_hot"
     }
@@ -344,6 +392,7 @@ export const Constants = {
         "shoes",
         "accessory",
       ],
+      style_icon_status: ["ready", "placeholder"],
       tag_status: ["pending", "tagged", "confirmed", "failed"],
       temp_sensitivity: ["runs_cold", "neutral", "runs_hot"],
     },

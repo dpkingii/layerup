@@ -3,11 +3,17 @@
 import { startTransition, useActionState, useState } from "react";
 import { completeOnboarding, type SaveState } from "@/lib/profile/actions";
 import { Button } from "@/components/ui/button";
+import { StyleIcons } from "@/components/style-icons/style-icons";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import type { StyleIcon } from "@/lib/style-icons";
 import { DayWindowFields, FitPicker, TempPicker, VibePicker, type ProfileFields } from "./fields";
 
 const STEPS = [
   { title: "What's your style?", description: "Pick every vibe that feels like you." },
+  {
+    title: "Anyone whose style you love?",
+    description: "Optional. Add up to 3 people and outfits will borrow from their style.",
+  },
   {
     title: "How do you handle temperature?",
     description: "We'll shift what \"cold\" means for you.",
@@ -16,7 +22,7 @@ const STEPS = [
   { title: "When are you usually out?", description: "We'll dress you for the weather in this window." },
 ];
 
-export function OnboardingFlow({ initial }: { initial: ProfileFields }) {
+export function OnboardingFlow({ initial, icons }: { initial: ProfileFields; icons: StyleIcon[] }) {
   const [state, formAction, pending] = useActionState<SaveState, FormData>(completeOnboarding, {
     status: "idle",
   });
@@ -49,15 +55,18 @@ export function OnboardingFlow({ initial }: { initial: ProfileFields }) {
             <VibePicker value={fields.vibes} onChange={(vibes) => setFields({ ...fields, vibes })} />
           </div>
           <div hidden={step !== 1}>
+            <StyleIcons initial={icons} />
+          </div>
+          <div hidden={step !== 2}>
             <TempPicker
               value={fields.temp_sensitivity}
               onChange={(temp_sensitivity) => setFields({ ...fields, temp_sensitivity })}
             />
           </div>
-          <div hidden={step !== 2}>
+          <div hidden={step !== 3}>
             <FitPicker value={fields.fit_pref} onChange={(fit_pref) => setFields({ ...fields, fit_pref })} />
           </div>
-          <div hidden={step !== 3}>
+          <div hidden={step !== 4}>
             <DayWindowFields
               start={fields.day_start}
               end={fields.day_end}
@@ -75,7 +84,7 @@ export function OnboardingFlow({ initial }: { initial: ProfileFields }) {
             Back
           </Button>
           <div className="flex gap-2">
-            {step === 2 && (
+            {step === 3 && (
               <Button
                 type="button"
                 variant="outline"

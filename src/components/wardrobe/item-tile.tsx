@@ -1,7 +1,7 @@
-import { CircleAlert, Clock, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { CircleAlert, Clock, Loader2, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WardrobeItem } from "@/lib/wardrobe/items";
-import { ColorSwatch, SLOT_ICONS, SLOT_LABELS } from "./slots";
+import { ColorSwatch, SLOT_ICONS } from "./slots";
 import type { QueueState } from "./use-tag-queue";
 
 const QUEUE_LABELS: Record<QueueState, string> = {
@@ -26,7 +26,7 @@ export function ItemTile({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="relative aspect-square overflow-hidden rounded-lg border border-transparent bg-card ring-1 ring-foreground/5">
+      <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-card">
         <button
           type="button"
           onClick={onOpen}
@@ -60,45 +60,49 @@ export function ItemTile({
               </div>
             </div>
           )}
+          <span aria-hidden className="absolute inset-0 transition-colors group-hover:bg-black/25" />
+          <span
+            aria-hidden
+            className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            <Pencil className="size-3.5" />
+          </span>
           {item.tag_status === "pending" && (
-            <span className="absolute top-2 left-2 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
+            <span className="absolute top-2 left-2 rounded-full bg-background/85 px-2 py-0.5 text-xs font-medium backdrop-blur">
               Needs tags
             </span>
           )}
           {item.tag_status === "tagged" && (
-            <span className="absolute top-2 left-2 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
+            <span className="absolute top-2 left-2 rounded-full bg-background/85 px-2 py-0.5 text-xs font-medium backdrop-blur">
               Review
             </span>
           )}
           {item.tag_status === "failed" && (
-            <span className="absolute top-2 left-2 flex items-center gap-1 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium text-destructive backdrop-blur">
+            <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-xs font-medium text-destructive backdrop-blur">
               <CircleAlert className="size-3.5" />
               Tagging failed
             </span>
           )}
         </button>
         {queueState ? (
-          <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-sm bg-background/85 py-1 text-xs font-medium backdrop-blur">
+          <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-full bg-background/85 py-1 text-xs font-medium backdrop-blur">
             <QueueIcon className={queueState === "waiting" ? "size-3.5" : "size-3.5 animate-spin"} />
             {QUEUE_LABELS[queueState]}
           </span>
         ) : (
           item.photo_path &&
           (item.tag_status === "pending" || item.tag_status === "failed") && (
-            <Button size="sm" variant="secondary" onClick={onAutoTag} className="absolute inset-x-2 bottom-2 rounded-sm">
+            <Button size="sm" variant="secondary" onClick={onAutoTag} className="absolute inset-x-2 bottom-2 rounded-full">
               {item.tag_status === "failed" ? <RefreshCw /> : <Sparkles />}
               {item.tag_status === "failed" ? "Retry AI" : "Auto-tag"}
             </Button>
           )
         )}
       </div>
-      <div className="min-w-0 px-0.5">
-        <p className="truncate text-sm font-medium first-letter:uppercase">{item.subtype ?? "Untagged"}</p>
-        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-          {item.photoUrl && item.colors[0] && <ColorSwatch color={item.colors[0]} className="size-3" />}
-          {item.slot ? SLOT_LABELS[item.slot] : " "}
-        </p>
-      </div>
+      <p className="flex min-w-0 items-center gap-1.5 px-1 text-sm font-medium">
+        {item.colors[0] && <ColorSwatch color={item.colors[0]} className="size-2.5" />}
+        <span className="truncate first-letter:uppercase">{item.subtype ?? "Untagged"}</span>
+      </p>
     </div>
   );
 }
@@ -106,10 +110,10 @@ export function ItemTile({
 export function UploadTile({ name, previewUrl, error }: { name: string; previewUrl?: string; error?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+      <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {previewUrl && <img src={previewUrl} alt="" className="size-full object-cover opacity-60 outline outline-1 -outline-offset-1 outline-white/10" />}
-        <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-sm bg-background/85 py-1 text-xs font-medium backdrop-blur">
+        <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-full bg-background/85 py-1 text-xs font-medium backdrop-blur">
           {error ? (
             <span className="text-destructive">Upload failed</span>
           ) : (
@@ -120,7 +124,7 @@ export function UploadTile({ name, previewUrl, error }: { name: string; previewU
           )}
         </span>
       </div>
-      <p className="truncate px-0.5 text-sm text-muted-foreground" title={error ?? name}>
+      <p className="truncate px-1 text-sm text-muted-foreground" title={error ?? name}>
         {error ?? name}
       </p>
     </div>

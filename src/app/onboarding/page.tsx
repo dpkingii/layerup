@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { getProfile, toFields } from "@/lib/profile";
+import { listStyleIcons } from "@/lib/style-icons";
+import { createClient } from "@/lib/supabase/server";
 
 export default function OnboardingPage() {
   return (
@@ -18,5 +20,6 @@ async function Onboarding() {
   const profile = await getProfile();
   if (profile.onboarded_at) redirect("/settings");
 
-  return <OnboardingFlow initial={toFields(profile)} />;
+  const icons = await listStyleIcons(await createClient());
+  return <OnboardingFlow initial={toFields(profile)} icons={icons} />;
 }

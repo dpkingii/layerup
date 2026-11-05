@@ -26,12 +26,24 @@ const FIT_OPTIONS: { value: Enums<"fit_pref"> | ""; label: string; description: 
   { value: "", label: "No preference", description: "Mix it up." },
 ];
 
-const optionClass =
-  "flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition-colors hover:bg-muted has-checked:border-primary has-checked:bg-primary/5 has-focus-visible:ring-3 has-focus-visible:ring-ring/50";
+const optionClass = "flex cursor-pointer items-start gap-3 py-1 text-sm";
+const inputClass = "mt-0.5 size-4 shrink-0 cursor-pointer accent-primary";
+
+function OptionText({ label, description, children }: { label: string; description: string; children?: React.ReactNode }) {
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span className="flex items-center gap-2 font-medium">
+        {label}
+        {children}
+      </span>
+      <span className="text-muted-foreground">{description}</span>
+    </span>
+  );
+}
 
 export function VibePicker({ value, onChange }: { value: string[]; onChange: (vibes: string[]) => void }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
       {VIBES.map((vibe) => (
         <label key={vibe.id} className={optionClass}>
           <input
@@ -42,17 +54,15 @@ export function VibePicker({ value, onChange }: { value: string[]; onChange: (vi
             onChange={(e) =>
               onChange(e.target.checked ? [...value, vibe.id] : value.filter((id) => id !== vibe.id))
             }
-            className="sr-only"
+            className={inputClass}
           />
-          <span className="flex flex-1 flex-col gap-1">
-            <span className="font-medium">{vibe.label}</span>
-            <span className="text-muted-foreground">{vibe.description}</span>
+          <OptionText label={vibe.label} description={vibe.description}>
             <span className="flex gap-1" aria-hidden>
               {vibe.palette.map((color) => (
-                <span key={color} className="size-3 rounded-full ring-1 ring-foreground/10" style={{ background: color }} />
+                <span key={color} className="size-2.5 rounded-full ring-1 ring-foreground/10" style={{ background: color }} />
               ))}
             </span>
-          </span>
+          </OptionText>
         </label>
       ))}
     </div>
@@ -67,7 +77,7 @@ export function TempPicker({
   onChange: (value: ProfileFields["temp_sensitivity"]) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className="flex flex-col gap-3">
       {TEMP_OPTIONS.map((option) => (
         <label key={option.value} className={optionClass}>
           <input
@@ -76,12 +86,9 @@ export function TempPicker({
             value={option.value}
             checked={value === option.value}
             onChange={() => onChange(option.value)}
-            className="sr-only"
+            className={inputClass}
           />
-          <span className="flex flex-col gap-1">
-            <span className="font-medium">{option.label}</span>
-            <span className="text-muted-foreground">{option.description}</span>
-          </span>
+          <OptionText label={option.label} description={option.description} />
         </label>
       ))}
     </div>
@@ -96,7 +103,7 @@ export function FitPicker({
   onChange: (value: ProfileFields["fit_pref"]) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className="flex flex-col gap-3">
       {FIT_OPTIONS.map((option) => (
         <label key={option.value} className={optionClass}>
           <input
@@ -105,12 +112,9 @@ export function FitPicker({
             value={option.value}
             checked={(value ?? "") === option.value}
             onChange={() => onChange(option.value || null)}
-            className="sr-only"
+            className={inputClass}
           />
-          <span className="flex flex-col gap-1">
-            <span className="font-medium">{option.label}</span>
-            <span className="text-muted-foreground">{option.description}</span>
-          </span>
+          <OptionText label={option.label} description={option.description} />
         </label>
       ))}
     </div>
