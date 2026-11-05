@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Layerup
 
-## Getting Started
+**Dressed for the day in one message.**
 
-First, run the development server:
+A stylist that knows your closet and today's forecast.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## The problem
+
+Every morning starts the same way: check the weather, open the closet, and stare. The clothes are all there, but turning "52°F, rain by 3pm, office then dinner" into an outfit is a small puzzle you solve half-awake. So you reach for the same three things, get it wrong by noon, and the rest of your wardrobe sits unworn.
+
+## What Layerup does
+
+Layerup turns that puzzle into one message. Tell the stylist what your day looks like, and it dresses you **from the clothes you already own**, layered for the weather you'll actually walk through, from the cold morning to the warm afternoon and the rainy commute home.
+
+- **Your clothes, not a catalog.** Every suggestion comes from your own wardrobe. Nothing to buy.
+- **Weather you'll actually feel.** Outfits are built for the whole window you're out, and adjusted for whether you run hot or cold.
+- **A stylist you can talk to.** Say "warmer", "dressier" or "more relaxed" and it refines the look instead of starting over.
+- **You have the last word.** Swipe any piece on the mannequin to swap it, and the stylist keeps your choice.
+
+## How it works
+
+1. **Build your closet.** Snap your clothes. Layerup removes the background so each piece stands on its own, and picking a type (hoodie, chinos, boots) fills in warmth and weather details for you. AI tagging is one tap away if you want it.
+2. **Set your style once.** Pick your vibes, how you run on temperature and how you like things to fit.
+3. **Ask the stylist.** Type your plans or tap a starter like "Rainy errands". You get one outfit on a mannequin made from your own pieces, with a short note on why it works.
+4. **Refine and wear.** Swipe, chat, then tap **Wear this** to lock it in.
+
+## Status
+
+An invite-only MVP built for daily personal use. Runs on free tiers: Gemini Flash Lite for the stylist, Open-Meteo for weather, Supabase for data and photos, and in-browser background removal.
+
+## Run it locally
+
+Create `.env.local` with:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+GOOGLE_GENERATIVE_AI_API_KEY=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Stack: Next.js 16, React 19, Tailwind v4, Supabase (auth, Postgres, storage), AI SDK with Gemini.
