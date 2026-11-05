@@ -57,6 +57,7 @@ export const PRESETS: Preset[] = [
   bottom(2)("leggings"),
   bottom(3, windy)("jeans"),
   bottom(3)("joggers"),
+  bottom(3)("sweatpants"),
   bottom(3, windy)("wool trousers"),
   dress(1)("sundress"),
   dress(2)("dress"),

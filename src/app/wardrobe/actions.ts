@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { ItemTags } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
-import { BUCKET, photoPath, type ItemRow } from "@/lib/wardrobe/items";
+import { BUCKET, cutoutPath, photoPath, type ItemRow } from "@/lib/wardrobe/items";
 import { STARTER_ITEMS } from "@/lib/wardrobe/starter-items";
 import { suggestTags, type SuggestResult } from "@/lib/wardrobe/tagging";
 
@@ -86,15 +86,32 @@ export async function updateItemTags(id: string, tags: ItemTags): Promise<ItemRo
   return data;
 }
 
+// The client uploads the cutout to <user_id>/<id>.png first.
+export async function saveCutout(id: string): Promise<ItemRow> {
+  const itemId = ItemId.parse(id);
+  const { supabase, userId } = await signedIn();
+
+  const { data, error } = await supabase
+    .from("items")
+    .update({ cutout_path: cutoutPath(userId, itemId) })
+    .eq("id", itemId)
+    .not("photo_path", "is", null)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteItem(id: string) {
   const itemId = ItemId.parse(id);
   const { supabase } = await signedIn();
 
-  const { data: item, error } = await supabase.from("items").select("photo_path").eq("id", itemId).single();
+  const { data: item, error } = await supabase.from("items").select("photo_path, cutout_path").eq("id", itemId).single();
   if (error) throw error;
 
-  if (item.photo_path) {
-    const { error: storageError } = await supabase.storage.from(BUCKET).remove([item.photo_path]);
+  const files = [item.photo_path, item.cutout_path].filter((p) => p !== null);
+  if (files.length) {
+    const { error: storageError } = await supabase.storage.from(BUCKET).remove(files);
     if (storageError) throw storageError;
   }
   const { error: deleteError } = await supabase.from("items").delete().eq("id", itemId);

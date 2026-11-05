@@ -11,6 +11,7 @@ import { addPhotoItem } from "@/app/wardrobe/actions";
 import { ItemEditor } from "./item-editor";
 import { ItemTile, UploadTile } from "./item-tile";
 import { StarterPicker } from "./starter-picker";
+import { useCutoutQueue } from "./use-cutout-queue";
 import { useTagQueue } from "./use-tag-queue";
 
 const UPLOAD_CONCURRENCY = 4;
@@ -33,12 +34,13 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
   function upsertRow(row: ItemRow, photoUrl?: string) {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === row.id);
-      const next = { ...row, photoUrl: photoUrl ?? existing?.photoUrl ?? null };
+      const next = { ...row, photoUrl: photoUrl ?? existing?.photoUrl ?? null, cutoutUrl: existing?.cutoutUrl ?? null };
       return existing ? prev.map((i) => (i.id === row.id ? next : i)) : [next, ...prev];
     });
   }
 
   const tagQueue = useTagQueue((row) => upsertRow(row));
+  useCutoutQueue(items, userId, supabase, (row) => upsertRow(row));
   const untagged = items.filter((i) => i.photo_path && (i.tag_status === "pending" || i.tag_status === "failed"));
 
   async function uploadOne(upload: Upload, file: File) {
@@ -191,7 +193,7 @@ export function WardrobeBoard({ userId, initialItems }: { userId: string; initia
         <StarterPicker
           onClose={() => setPickingStarters(false)}
           onAdded={(rows) => {
-            setItems((prev) => [...rows.map((r) => ({ ...r, photoUrl: null })), ...prev]);
+            setItems((prev) => [...rows.map((r) => ({ ...r, photoUrl: null, cutoutUrl: null })), ...prev]);
             setPickingStarters(false);
           }}
         />

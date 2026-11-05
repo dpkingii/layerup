@@ -35,6 +35,7 @@ export type Database = {
           category: string | null
           colors: string[]
           created_at: string
+          cutout_path: string | null
           id: string
           is_generic: boolean
           pattern: string | null
@@ -52,6 +53,7 @@ export type Database = {
           category?: string | null
           colors?: string[]
           created_at?: string
+          cutout_path?: string | null
           id?: string
           is_generic?: boolean
           pattern?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           category?: string | null
           colors?: string[]
           created_at?: string
+          cutout_path?: string | null
           id?: string
           is_generic?: boolean
           pattern?: string | null
@@ -140,6 +143,7 @@ export type Database = {
           feedback: string[] | null
           id: string
           outfit: Json
+          prompt: string | null
           rationale: string | null
           session_id: string
           user_id: string
@@ -152,6 +156,7 @@ export type Database = {
           feedback?: string[] | null
           id?: string
           outfit: Json
+          prompt?: string | null
           rationale?: string | null
           session_id: string
           user_id?: string
@@ -164,6 +169,7 @@ export type Database = {
           feedback?: string[] | null
           id?: string
           outfit?: Json
+          prompt?: string | null
           rationale?: string | null
           session_id?: string
           user_id?: string

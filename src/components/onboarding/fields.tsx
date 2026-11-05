@@ -13,10 +13,10 @@ export type ProfileFields = {
   day_end: string;
 };
 
-const TEMP_OPTIONS: { value: Enums<"temp_sensitivity">; label: string; description: string; emoji: string }[] = [
-  { value: "runs_cold", label: "I run cold", description: "Reach for a layer sooner than most.", emoji: "🥶" },
-  { value: "neutral", label: "Neutral", description: "The forecast feels about right to me.", emoji: "🙂" },
-  { value: "runs_hot", label: "I run hot", description: "I'm in a T-shirt when others want a jacket.", emoji: "🥵" },
+const TEMP_OPTIONS: { value: Enums<"temp_sensitivity">; label: string; description: string }[] = [
+  { value: "runs_cold", label: "I run cold", description: "Reach for a layer sooner than most." },
+  { value: "neutral", label: "Neutral", description: "The forecast feels about right to me." },
+  { value: "runs_hot", label: "I run hot", description: "I'm in a T-shirt when others want a jacket." },
 ];
 
 const FIT_OPTIONS: { value: Enums<"fit_pref"> | ""; label: string; description: string }[] = [
@@ -44,9 +44,6 @@ export function VibePicker({ value, onChange }: { value: string[]; onChange: (vi
             }
             className="sr-only"
           />
-          <span className="text-2xl leading-none" aria-hidden>
-            {vibe.emoji}
-          </span>
           <span className="flex flex-1 flex-col gap-1">
             <span className="font-medium">{vibe.label}</span>
             <span className="text-muted-foreground">{vibe.description}</span>
@@ -81,9 +78,6 @@ export function TempPicker({
             onChange={() => onChange(option.value)}
             className="sr-only"
           />
-          <span className="text-2xl leading-none" aria-hidden>
-            {option.emoji}
-          </span>
           <span className="flex flex-col gap-1">
             <span className="font-medium">{option.label}</span>
             <span className="text-muted-foreground">{option.description}</span>

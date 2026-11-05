@@ -5,10 +5,14 @@ import { ItemTags } from "@/lib/schemas";
 export const BUCKET = "wardrobe";
 
 export type ItemRow = Database["public"]["Tables"]["items"]["Row"];
-export type WardrobeItem = ItemRow & { photoUrl: string | null };
+export type WardrobeItem = ItemRow & { photoUrl: string | null; cutoutUrl: string | null };
 
 export function photoPath(userId: string, itemId: string) {
   return `${userId}/${itemId}.jpg`;
+}
+
+export function cutoutPath(userId: string, itemId: string) {
+  return `${userId}/${itemId}.png`;
 }
 
 export function tagsFromRow(item: ItemRow): ItemTags | null {
@@ -24,7 +28,7 @@ export async function listItems(supabase: SupabaseClient<Database>): Promise<War
   if (error) throw error;
 
   const urls = new Map<string, string>();
-  const toSign = data.flatMap((i) => (i.photo_path ? [i.photo_path] : []));
+  const toSign = data.flatMap((i) => [i.photo_path, i.cutout_path].filter((p) => p !== null));
   if (toSign.length) {
     const { data: signed, error: signError } = await supabase.storage
       .from(BUCKET)
@@ -33,5 +37,6 @@ export async function listItems(supabase: SupabaseClient<Database>): Promise<War
     for (const s of signed) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
   }
 
-  return data.map((i) => ({ ...i, photoUrl: i.photo_path ? (urls.get(i.photo_path) ?? null) : null }));
+  const urlOf = (path: string | null) => (path ? (urls.get(path) ?? null) : null);
+  return data.map((i) => ({ ...i, photoUrl: urlOf(i.photo_path), cutoutUrl: urlOf(i.cutout_path) }));
 }

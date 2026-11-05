@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { DayContext, FitPref, ItemSlot, ItemTags, TempSensitivity } from "@/lib/schemas";
+import type { FitPref, ItemSlot, ItemTags, Outfit, TempSensitivity } from "@/lib/schemas";
 
 export type ClosetItem = ItemTags & { id: string; photoPath: string | null };
 
@@ -9,16 +9,17 @@ export type OutfitProfile = {
   fitPref: z.infer<typeof FitPref> | null;
 };
 
-export type OutfitTile = {
+// What the stylist chat needs to draw a tile and offer swaps.
+export type StylistItem = {
+  id: string;
   slot: z.infer<typeof ItemSlot>;
-  itemId: string;
   label: string;
   photoUrl: string | null;
+  cutoutUrl: string | null;
 };
 
 export type SuggestionView = {
   id: string;
-  context: z.infer<typeof DayContext>;
-  tiles: OutfitTile[];
+  items: Outfit["items"];
   rationale: string;
 };

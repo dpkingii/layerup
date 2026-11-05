@@ -60,12 +60,3 @@ export const Outfit = z.object({
   rationale: z.string().describe("One or two sentences tying the pick to the weather and context"),
 });
 export type Outfit = z.infer<typeof Outfit>;
-
-export const FeedbackReason = z.enum(["too_warm", "too_cold", "too_formal", "too_casual", "dislike_piece"]);
-
-// Stored in suggestions.feedback as "reason" or "dislike_piece:<itemId>".
-export const ShuffleFeedback = z.object({
-  reasons: z.array(FeedbackReason).min(1),
-  dislikedItemIds: z.array(z.string()).default([]),
-});
-export type ShuffleFeedback = z.infer<typeof ShuffleFeedback>;
