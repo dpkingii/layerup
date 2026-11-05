@@ -150,7 +150,7 @@ function Piece({
           src={item.photoUrl}
           alt={item.label}
           draggable={false}
-          className={cn(height, "aspect-square max-w-full rounded-2xl object-cover shadow-sm")}
+          className={cn(height, "aspect-square max-w-full rounded-2xl object-cover shadow-sm outline outline-1 -outline-offset-1 outline-white/10")}
         />
       ) : (
         <div

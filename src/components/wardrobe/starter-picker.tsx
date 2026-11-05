@@ -35,7 +35,7 @@ export function StarterPicker({ onClose, onAdded }: { onClose: () => void; onAdd
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add starter items</DialogTitle>
           <DialogDescription>Basics you own but haven&apos;t photographed. You can edit their tags later.</DialogDescription>

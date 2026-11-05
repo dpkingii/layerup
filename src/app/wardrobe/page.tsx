@@ -1,18 +1,22 @@
 import { Suspense } from "react";
 import { AppNav } from "@/components/app-nav";
+import { PAGE_FRAME } from "@/components/page-frame";
 import { WardrobeBoard } from "@/components/wardrobe/wardrobe-board";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { listItems } from "@/lib/wardrobe/items";
 
 export default function WardrobePage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 sm:p-6">
+    <>
       <AppNav />
-      <h1 className="text-2xl font-semibold">Wardrobe</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading your closet…</p>}>
-        <Wardrobe />
-      </Suspense>
-    </main>
+      <main className={cn(PAGE_FRAME, "flex flex-1 flex-col gap-6 py-6")}>
+        <h1 className="text-2xl font-semibold">Wardrobe</h1>
+        <Suspense fallback={<p className="text-muted-foreground">Loading your closet…</p>}>
+          <Wardrobe />
+        </Suspense>
+      </main>
+    </>
   );
 }
 

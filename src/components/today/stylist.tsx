@@ -37,7 +37,8 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
   const busy = thinking || wearing;
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const smooth = matchMedia("(prefers-reduced-motion: no-preference)").matches;
+    endRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "end" });
   }, [turns.length, thinking]);
 
   function run(input: AskInput) {
@@ -217,7 +218,7 @@ function StylistBubble({ faded, children }: { faded?: boolean; children: React.R
   return (
     <div
       className={cn(
-        "flex max-w-xl flex-col gap-3 rounded-3xl rounded-bl-md border bg-card p-3 shadow-sm transition-opacity sm:p-4",
+        "flex max-w-xl flex-col gap-3 rounded-3xl rounded-bl-md border border-transparent bg-card p-3 shadow-sm ring-1 ring-foreground/10 transition-opacity sm:p-4",
         faded && "opacity-60",
       )}
     >

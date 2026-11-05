@@ -26,21 +26,29 @@ export function ItemTile({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+      <div className="relative aspect-square overflow-hidden rounded-lg border border-transparent bg-card ring-1 ring-foreground/5">
         <button
           type="button"
           onClick={onOpen}
           className="group absolute inset-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
           aria-label={`Edit ${item.subtype ?? "item"}`}
         >
-          {item.photoUrl ? (
+          {item.cutoutUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.cutoutUrl}
+              alt={item.subtype ?? "Clothing item"}
+              loading="lazy"
+              className="size-full object-contain p-5 drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)] motion-safe:transition-transform motion-safe:group-hover:scale-[1.03]"
+            />
+          ) : item.photoUrl ? (
             // Signed Supabase URLs change per session; next/image would need remotePatterns in the shared config.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={item.photoUrl}
               alt={item.subtype ?? "Clothing item"}
               loading="lazy"
-              className="size-full object-cover transition-transform group-hover:scale-[1.02]"
+              className="size-full object-cover outline outline-1 -outline-offset-1 outline-white/10 motion-safe:transition-transform motion-safe:group-hover:scale-[1.02]"
             />
           ) : (
             <div className="flex size-full flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -53,31 +61,31 @@ export function ItemTile({
             </div>
           )}
           {item.tag_status === "pending" && (
-            <span className="absolute top-2 left-2 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
+            <span className="absolute top-2 left-2 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
               Needs tags
             </span>
           )}
           {item.tag_status === "tagged" && (
-            <span className="absolute top-2 left-2 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
+            <span className="absolute top-2 left-2 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium backdrop-blur">
               Review
             </span>
           )}
           {item.tag_status === "failed" && (
-            <span className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-background/85 px-1.5 py-0.5 text-xs font-medium text-destructive backdrop-blur">
+            <span className="absolute top-2 left-2 flex items-center gap-1 rounded-sm bg-background/85 px-1.5 py-0.5 text-xs font-medium text-destructive backdrop-blur">
               <CircleAlert className="size-3.5" />
               Tagging failed
             </span>
           )}
         </button>
         {queueState ? (
-          <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-md bg-background/85 py-1 text-xs font-medium backdrop-blur">
+          <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-sm bg-background/85 py-1 text-xs font-medium backdrop-blur">
             <QueueIcon className={queueState === "waiting" ? "size-3.5" : "size-3.5 animate-spin"} />
             {QUEUE_LABELS[queueState]}
           </span>
         ) : (
           item.photo_path &&
           (item.tag_status === "pending" || item.tag_status === "failed") && (
-            <Button size="sm" variant="secondary" onClick={onAutoTag} className="absolute inset-x-2 bottom-2">
+            <Button size="sm" variant="secondary" onClick={onAutoTag} className="absolute inset-x-2 bottom-2 rounded-sm">
               {item.tag_status === "failed" ? <RefreshCw /> : <Sparkles />}
               {item.tag_status === "failed" ? "Retry AI" : "Auto-tag"}
             </Button>
@@ -100,8 +108,8 @@ export function UploadTile({ name, previewUrl, error }: { name: string; previewU
     <div className="flex flex-col gap-1.5">
       <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {previewUrl && <img src={previewUrl} alt="" className="size-full object-cover opacity-60" />}
-        <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-md bg-background/85 py-1 text-xs font-medium backdrop-blur">
+        {previewUrl && <img src={previewUrl} alt="" className="size-full object-cover opacity-60 outline outline-1 -outline-offset-1 outline-white/10" />}
+        <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-sm bg-background/85 py-1 text-xs font-medium backdrop-blur">
           {error ? (
             <span className="text-destructive">Upload failed</span>
           ) : (

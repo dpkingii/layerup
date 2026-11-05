@@ -8,12 +8,14 @@ import { listItems, tagsFromRow } from "@/lib/wardrobe/items";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 sm:p-6">
+    <>
       <AppNav />
-      <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
-        <OnboardedStylist />
-      </Suspense>
-    </main>
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
+        <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
+          <OnboardedStylist />
+        </Suspense>
+      </main>
+    </>
   );
 }
 

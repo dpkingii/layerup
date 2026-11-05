@@ -136,7 +136,7 @@ export function ItemEditor({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{item.is_generic ? "Starter item" : "Edit tags"}</DialogTitle>
         </DialogHeader>
