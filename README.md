@@ -4,7 +4,7 @@
 
 A stylist that knows your closet and today's forecast.
 
-**[Try the live demo](#)**: one click, no sign-up. You get your own copy of a real 19-piece closet and 10 AI requests.
+**[Try the live demo](https://layerup-woad.vercel.app)**: one click, no sign-up. You get your own copy of a real 19-piece closet and 10 AI requests.
 
 <p>
   <img src="docs/today.jpg" alt="Today: the stylist's outfit for &quot;Dinner out tonight&quot; on a mannequin made from closet photos, with the Seattle forecast" width="49%">
