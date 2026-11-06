@@ -29,6 +29,74 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_items: {
+        Row: {
+          breathable: boolean
+          category: string | null
+          colors: string[]
+          cutout_path: string | null
+          id: string
+          pattern: string | null
+          photo_path: string
+          slot: Database["public"]["Enums"]["item_slot"] | null
+          subtype: string | null
+          warmth: number | null
+          waterproof: boolean
+          windproof: boolean
+        }
+        Insert: {
+          breathable?: boolean
+          category?: string | null
+          colors?: string[]
+          cutout_path?: string | null
+          id?: string
+          pattern?: string | null
+          photo_path: string
+          slot?: Database["public"]["Enums"]["item_slot"] | null
+          subtype?: string | null
+          warmth?: number | null
+          waterproof?: boolean
+          windproof?: boolean
+        }
+        Update: {
+          breathable?: boolean
+          category?: string | null
+          colors?: string[]
+          cutout_path?: string | null
+          id?: string
+          pattern?: string | null
+          photo_path?: string
+          slot?: Database["public"]["Enums"]["item_slot"] | null
+          subtype?: string | null
+          warmth?: number | null
+          waterproof?: boolean
+          windproof?: boolean
+        }
+        Relationships: []
+      }
+      demo_usage: {
+        Row: {
+          ai_requests: number
+          user_id: string
+        }
+        Insert: {
+          ai_requests?: number
+          user_id: string
+        }
+        Update: {
+          ai_requests?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           breathable: boolean
@@ -238,7 +306,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_demo_asset: { Args: { object_name: string }; Returns: boolean }
+      is_guest: { Args: never; Returns: boolean }
+      seed_demo_closet: {
+        Args: never
+        Returns: {
+          cutout_from: string
+          item_id: string
+          photo_from: string
+        }[]
+      }
+      use_ai_request: { Args: never; Returns: boolean }
     }
     Enums: {
       day_context: "work" | "casual" | "active" | "going_out"

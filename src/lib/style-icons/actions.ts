@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { aiUnavailableMessage } from "@/lib/ai";
+import { allowAiRequest, DEMO_AI_LIMIT_MESSAGE } from "@/lib/demo";
 import type { TablesInsert } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_STYLE_ICONS, type StyleIcon } from "./index";
@@ -40,7 +41,7 @@ export async function addStyleIcon(rawName: string): Promise<IconResult> {
   const blocked = await checkRoom(supabase, name.data);
   if (blocked) return fail(blocked);
 
-  return withAi(async () => {
+  return withAi(supabase, async () => {
     const profile = await profileFromName(name.data);
     if (!profile) {
       return { ok: false, reason: "unknown", error: `I don't know ${name.data}'s style well.` };
@@ -61,7 +62,7 @@ export async function describeStyleIcon(input: { id?: string; name: string; desc
     if (blocked) return fail(blocked);
   }
 
-  return withAi(async () => {
+  return withAi(supabase, async () => {
     const row = { name: name.data, ...toRow(await profileFromDescription(name.data, description.data)) };
     if (!input.id) return insert(supabase, row);
     const { data, error } = await supabase.from("style_icons").update(row).eq("id", input.id).select().single();
@@ -121,8 +122,9 @@ async function insert(supabase: Supabase, row: TablesInsert<"style_icons">): Pro
   return { ok: true, icon: data };
 }
 
-async function withAi(run: () => Promise<IconResult>): Promise<IconResult> {
+async function withAi(supabase: Supabase, run: () => Promise<IconResult>): Promise<IconResult> {
   try {
+    if (!(await allowAiRequest(supabase))) return fail(DEMO_AI_LIMIT_MESSAGE);
     return await run();
   } catch (e) {
     const unavailable = aiUnavailableMessage(e);

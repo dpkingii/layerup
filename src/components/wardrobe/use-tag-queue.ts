@@ -49,6 +49,7 @@ export function useTagQueue(onRow: (row: ItemRow) => void) {
       lastCallAt.current = Date.now();
       try {
         const result = await autoTagItem(id);
+        if (result.status === "demo_limit") return "quota";
         if (result.status !== "rate_limited") {
           onRowRef.current(result.row);
           return "done";

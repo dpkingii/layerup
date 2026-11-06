@@ -2,6 +2,7 @@ import "server-only";
 import { APICallError, generateText, Output } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { taggingModel } from "@/lib/ai";
+import { allowAiRequest } from "@/lib/demo";
 import type { Database } from "@/lib/database.types";
 import { ItemTags } from "@/lib/schemas";
 import { BUCKET } from "./items";
@@ -13,11 +14,16 @@ const PROMPT = `Tag this clothing item for a weather-based outfit app.
 - waterproof/windproof/breathable: only true if the material clearly has that property.
 If several items are visible, tag the main garment the photo is about. Prefer it over socks, underlayers or other incidental items, even if those take up more of the frame (e.g. shoes worn with bold socks: tag the shoes).`;
 
-export type SuggestResult = { status: "ok"; tags: ItemTags } | { status: "rate_limited" } | { status: "failed" };
+export type SuggestResult =
+  | { status: "ok"; tags: ItemTags }
+  | { status: "rate_limited" }
+  | { status: "demo_limit" }
+  | { status: "failed" };
 
 // Never throws: server action errors are redacted in production, so callers need the rate-limit case spelled out.
 export async function suggestTags(supabase: SupabaseClient<Database>, path: string): Promise<SuggestResult> {
   try {
+    if (!(await allowAiRequest(supabase))) return { status: "demo_limit" };
     const { data: file, error } = await supabase.storage.from(BUCKET).download(path);
     if (error) throw error;
 

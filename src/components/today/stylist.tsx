@@ -6,6 +6,7 @@ import Link from "next/link";
 import { askStylist, wearOutfit, type AskInput } from "@/app/today/actions";
 import { Button } from "@/components/ui/button";
 import { WeatherSection } from "@/components/weather/weather-section";
+import { DEMO_AI_LIMIT_MESSAGE } from "@/lib/demo";
 import type { StylistItem, SuggestionView } from "@/lib/outfit/types";
 import type { Outfit, WeatherWindow } from "@/lib/schemas";
 import { addStyleIcon } from "@/lib/style-icons/actions";
@@ -27,7 +28,7 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
   const [weather, setWeather] = useState<WeatherWindow | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
-  const [error, setError] = useState<{ message: string; retry: () => void } | null>(null);
+  const [error, setError] = useState<{ message: string; retry?: () => void } | null>(null);
   const [thinking, startThinking] = useTransition();
   const [wearing, startWearing] = useTransition();
   // Created on the first message, not on render, so a visit without chatting starts no session.
@@ -50,7 +51,10 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
       if (result.ok) {
         setTurns((prev) => [...prev, { kind: "outfit", suggestion: result.data, items: result.data.items, worn: false }]);
       } else {
-        setError({ message: result.error, retry: () => run(input) });
+        setError({
+          message: result.error,
+          retry: result.error === DEMO_AI_LIMIT_MESSAGE ? undefined : () => run(input),
+        });
       }
     });
   }
@@ -101,7 +105,7 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
       }}
       className={cn(
         "flex flex-col gap-2",
-        !empty && "sticky bottom-0 -mx-4 bg-background/90 px-4 pt-2 pb-4 backdrop-blur sm:-mx-6 sm:px-6",
+        !empty && "sticky bottom-0 z-40 -mx-4 bg-background/90 px-4 pt-2 pb-4 backdrop-blur sm:-mx-6 sm:px-6",
       )}
     >
       <div className={cn("flex flex-wrap gap-2", empty && "order-last justify-center")}>
@@ -205,9 +209,11 @@ export function Stylist({ closet }: { closet: StylistItem[] }) {
         {error && (
           <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
             <span className="text-destructive">{error.message}</span>
-            <Button variant="secondary" size="sm" className="rounded-full" onClick={error.retry}>
-              Retry
-            </Button>
+            {error.retry && (
+              <Button variant="secondary" size="sm" className="rounded-full" onClick={error.retry}>
+                Retry
+              </Button>
+            )}
           </div>
         )}
         <div ref={endRef} />

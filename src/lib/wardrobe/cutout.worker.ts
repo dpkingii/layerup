@@ -1,28 +1,82 @@
-import { removeBackground } from "@imgly/background-removal";
+import * as ort from "onnxruntime-web";
 
+// IS-Net general-use (Apache-2.0 weights from the DIS project) as a 91 MB fp16 export, run with onnxruntime-web (MIT).
+// Pinned to a commit of a community mirror; the 44 MB quantized export left speckled backgrounds on white shoes.
+const MODEL_URL = "https://huggingface.co/tiper-penta/isnet-general-use-fp16/resolve/edcb78a6822640f4c2a1e6c9aa0ca6abab60a674/isnet-general-use-fp16.onnx";
+const SIZE = 1024;
 const MAX_EDGE = 800;
 const ALPHA_MIN = 8;
+
+ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions.web}/dist/`;
 
 export type CutoutRequest = { id: number; photo: Blob };
 export type CutoutResponse = { id: number; cutout: Blob } | { id: number; error: string };
 
+let session: Promise<ort.InferenceSession> | undefined;
+
+// Kept in Cache Storage so the model downloads once, not on every visit.
+async function loadModel() {
+  const cache = await caches.open("layerup-models");
+  let response = await cache.match(MODEL_URL);
+  if (!response) {
+    response = await fetch(MODEL_URL);
+    if (!response.ok) throw new Error(`Model download failed: ${response.status}`);
+    await cache.put(MODEL_URL, response.clone());
+  }
+  return ort.InferenceSession.create(new Uint8Array(await response.arrayBuffer()), { executionProviders: ["wasm"] });
+}
+
 // Inference takes seconds, so it runs here to keep the page responsive.
 self.onmessage = async ({ data: { id, photo } }: MessageEvent<CutoutRequest>) => {
   try {
-    const removed = await removeBackground(photo, { output: { format: "image/png" } });
-    self.postMessage({ id, cutout: await trimToItem(removed) } satisfies CutoutResponse);
+    self.postMessage({ id, cutout: await trimToItem(await removeBackground(photo)) } satisfies CutoutResponse);
   } catch (err) {
     self.postMessage({ id, error: err instanceof Error ? err.message : String(err) } satisfies CutoutResponse);
   }
 };
 
-// Crops away the transparent margin so cutouts line up by the item itself, not the original framing.
-async function trimToItem(png: Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(png);
-  const full = new OffscreenCanvas(bitmap.width, bitmap.height);
-  const ctx = full.getContext("2d")!;
+async function removeBackground(photo: Blob): Promise<OffscreenCanvas> {
+  session ??= loadModel();
+  const model = await session;
+  const bitmap = await createImageBitmap(photo);
+
+  const input = new OffscreenCanvas(SIZE, SIZE).getContext("2d")!;
+  input.drawImage(bitmap, 0, 0, SIZE, SIZE);
+  const rgba = input.getImageData(0, 0, SIZE, SIZE).data;
+  const plane = SIZE * SIZE;
+  const tensor = new Float32Array(3 * plane);
+  for (let i = 0; i < plane; i++) {
+    for (let c = 0; c < 3; c++) tensor[c * plane + i] = rgba[i * 4 + c] / 255 - 0.5;
+  }
+  const outputs = await model.run({ [model.inputNames[0]]: new ort.Tensor("float32", tensor, [1, 3, SIZE, SIZE]) });
+  const prediction = outputs[model.outputNames[0]].data as Float32Array;
+
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < plane; i++) {
+    if (prediction[i] < min) min = prediction[i];
+    if (prediction[i] > max) max = prediction[i];
+  }
+  const mask = new OffscreenCanvas(SIZE, SIZE);
+  const maskCtx = mask.getContext("2d")!;
+  const maskPixels = maskCtx.createImageData(SIZE, SIZE);
+  for (let i = 0; i < plane; i++) {
+    maskPixels.data[i * 4 + 3] = Math.round(((prediction[i] - min) / (max - min || 1)) * 255);
+  }
+  maskCtx.putImageData(maskPixels, 0, 0);
+
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(mask, 0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = "source-over";
+  return canvas;
+}
+
+// Crops away the transparent margin so cutouts line up by the item itself, not the original framing.
+async function trimToItem(full: OffscreenCanvas): Promise<Blob> {
+  const ctx = full.getContext("2d")!;
 
   const image = ctx.getImageData(0, 0, full.width, full.height);
   const { data, width, height } = image;

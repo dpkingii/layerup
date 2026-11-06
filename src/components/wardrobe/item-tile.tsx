@@ -53,6 +53,7 @@ export function ItemTile({
           ) : (
             <div className="flex size-full flex-col items-center justify-center gap-3 text-muted-foreground">
               {Icon && <Icon className="size-10" strokeWidth={1.5} />}
+              {item.subtype && <span className="px-3 text-center text-sm font-medium text-foreground first-letter:uppercase">{item.subtype}</span>}
               <div className="flex gap-1">
                 {item.colors.map((c) => (
                   <ColorSwatch key={c} color={c} className="size-5" />
@@ -99,10 +100,6 @@ export function ItemTile({
           )
         )}
       </div>
-      <p className="flex min-w-0 items-center gap-1.5 px-1 text-sm font-medium">
-        {item.colors[0] && <ColorSwatch color={item.colors[0]} className="size-2.5" />}
-        <span className="truncate first-letter:uppercase">{item.subtype ?? "Untagged"}</span>
-      </p>
     </div>
   );
 }
@@ -110,7 +107,7 @@ export function ItemTile({
 export function UploadTile({ name, previewUrl, error }: { name: string; previewUrl?: string; error?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-muted">
+      <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-muted" title={error ?? name}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {previewUrl && <img src={previewUrl} alt="" className="size-full object-cover opacity-60 outline outline-1 -outline-offset-1 outline-white/10" />}
         <span className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-full bg-background/85 py-1 text-xs font-medium backdrop-blur">
@@ -124,9 +121,6 @@ export function UploadTile({ name, previewUrl, error }: { name: string; previewU
           )}
         </span>
       </div>
-      <p className="truncate px-1 text-sm text-muted-foreground" title={error ?? name}>
-        {error ?? name}
-      </p>
     </div>
   );
 }

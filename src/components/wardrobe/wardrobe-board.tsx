@@ -20,7 +20,7 @@ const UPLOAD_CONCURRENCY = 4;
 
 type Upload = { id: string; name: string; previewUrl?: string; error?: string };
 
-const GRID = "grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
 const GROUPS = [...SLOT_ORDER, "untagged"] as const;
 type Group = (typeof GROUPS)[number];
 const GROUP_LABELS: Record<Group, string> = { ...SLOT_LABELS, untagged: "Not tagged yet" };

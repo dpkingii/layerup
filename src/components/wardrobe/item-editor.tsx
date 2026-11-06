@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DEMO_AI_LIMIT_MESSAGE } from "@/lib/demo";
 import { ItemSlot, ItemTags } from "@/lib/schemas";
 import { tagsFromRow, type ItemRow, type WardrobeItem } from "@/lib/wardrobe/items";
 import { findPreset, PRESETS } from "@/lib/wardrobe/presets";
@@ -94,7 +95,9 @@ export function ItemEditor({
       setError(
         result.status === "rate_limited"
           ? "AI tagging limit reached. Wait a minute and try again, or tag by hand."
-          : "AI couldn't tag this photo. Tag it by hand.",
+          : result.status === "demo_limit"
+            ? DEMO_AI_LIMIT_MESSAGE
+            : "AI couldn't tag this photo. Tag it by hand.",
       );
     } catch {
       setError("AI couldn't tag this photo. Tag it by hand.");

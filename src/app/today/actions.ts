@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { aiUnavailableMessage } from "@/lib/ai";
+import { allowAiRequest, DEMO_AI_LIMIT_MESSAGE } from "@/lib/demo";
 import { Outfit, WeatherWindow } from "@/lib/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { canDress, generateOutfit, loadCloset, loadProfile, loadReadyIcons, type SessionTurn } from "@/lib/outfit/generate";
@@ -55,6 +56,8 @@ export async function askStylist(input: AskInput): Promise<ActionResult<Suggesti
     if (!canDress(closet)) {
       return { ok: false, error: "Your closet needs at least a top, a bottom and shoes. Add or tag them in Wardrobe." };
     }
+
+    if (!(await allowAiRequest(supabase))) return { ok: false, error: DEMO_AI_LIMIT_MESSAGE };
 
     const { context, mentionedIcon, ...reply } = await generateOutfit({ closet, profile, icons, weather, message, history });
     const outfit = { ...reply, items: reply.items.toSorted((a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)) };

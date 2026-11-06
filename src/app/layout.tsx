@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
+import { DemoBanner } from "@/components/demo-banner";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${dmSans.variable} ${geistMono.variable} dark h-full scheme-dark antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <DemoBanner />
+        {children}
+      </body>
     </html>
   );
 }

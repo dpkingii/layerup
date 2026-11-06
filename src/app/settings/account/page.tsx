@@ -27,7 +27,10 @@ async function AccountSettings() {
   await getOnboardedProfile();
   const { data: auth } = await (await createClient()).auth.getClaims();
   return (
-    <SettingsRow title="Signed in as" description={auth?.claims.email ?? "Your Layerup account."}>
+    <SettingsRow
+      title="Signed in as"
+      description={auth?.claims.is_anonymous ? "A demo guest. Signing out ends this demo session." : (auth?.claims.email ?? "Your Layerup account.")}
+    >
       <form action={signOutAndRedirect}>
         <Button type="submit" variant="outline">
           Sign out

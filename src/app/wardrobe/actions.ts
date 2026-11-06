@@ -46,7 +46,7 @@ export async function suggestItemTags(id: string): Promise<SuggestResult> {
   return suggestTags(supabase, await photoOf(supabase, itemId));
 }
 
-export type AutoTagResult = { status: "ok" | "failed"; row: ItemRow } | { status: "rate_limited" };
+export type AutoTagResult = { status: "ok" | "failed"; row: ItemRow } | { status: "rate_limited" } | { status: "demo_limit" };
 
 // For grid tagging: saves suggestions as 'tagged' for later review. Only touches items
 // still untagged, so it can't overwrite tags the user confirmed while the queue ran.
@@ -54,7 +54,7 @@ export async function autoTagItem(id: string): Promise<AutoTagResult> {
   const itemId = ItemId.parse(id);
   const { supabase } = await signedIn();
   const result = await suggestTags(supabase, await photoOf(supabase, itemId));
-  if (result.status === "rate_limited") return result;
+  if (result.status === "rate_limited" || result.status === "demo_limit") return result;
 
   const { data, error } = await supabase
     .from("items")
