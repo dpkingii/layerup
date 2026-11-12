@@ -17,7 +17,7 @@ export function DemoBanner() {
 
   if (!guest) return null;
   return (
-    <p className="bg-primary px-4 py-2 text-center text-sm text-primary-foreground">
+    <p className="bg-secondary px-4 py-2 text-center text-sm text-secondary-foreground">
       You&apos;re exploring a demo closet. Your changes stay in this guest session, and it includes 10 AI requests.
     </p>
   );
