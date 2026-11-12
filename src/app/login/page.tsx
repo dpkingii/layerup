@@ -16,7 +16,8 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col gap-10">
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">Layerup</h1>
+          <p className="text-sm font-semibold tracking-tight">Layerup</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance">Dressed for the day in one message.</h1>
           <p className="text-pretty text-muted-foreground">
             Tell the stylist about your day and get an outfit from your own closet, dressed for the forecast.
           </p>
